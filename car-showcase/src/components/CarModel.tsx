@@ -2,17 +2,16 @@ import { useEffect, useRef, useMemo } from 'react';
 import { useGLTF } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { CAR_COLORS } from '../types';
 import type { CarColorOption } from '../types';
 
+gsap.registerPlugin(ScrollTrigger);
+
 useGLTF.preload('/models/land-cruiser.glb');
 
-const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-const smoothstep = (min: number, max: number, value: number) => {
-  const x = Math.max(0, Math.min(1, (value - min) / (max - min)));
-  return x * x * (3 - 2 * x);
-};
 
 export interface CarModelControls {
   doorsOpen: boolean;
@@ -34,6 +33,19 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
   const groupRef = useRef<THREE.Group>(null!);
   const currentPhaseRef = useRef<number>(0);
   const { camera } = useThree();
+
+  // Mouse Parallax tracking for Hero section
+  const mouse = useRef({ x: 0, y: 0, targetX: 0, targetY: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      // Normalize to -1 to +1
+      mouse.current.targetX = (e.clientX / window.innerWidth) * 2 - 1;
+      mouse.current.targetY = -(e.clientY / window.innerHeight) * 2 + 1;
+    };
+    window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    return () => window.removeEventListener('mousemove', handleMouseMove);
+  }, []);
 
   const pivots = useRef<{
     doorFL: THREE.Group | null;
@@ -59,6 +71,32 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
     bodyMaterials: [],
   });
 
+  // Single Animation State driven by GSAP timeline
+  const animState = useRef({
+    // Car transforms
+    carX: 0.35,
+    carY: -0.4,
+    carZ: 0.35,
+    carRotX: 0.02,
+    carRotY: 0.42,
+    carRotZ: 0,
+    carScale: 1.06,
+
+    // Camera transforms
+    camX: 0,
+    camY: 1.15,
+    camZ: 5.2,
+    camFov: 42,
+    lookX: 0.2,
+    lookY: 0.55,
+    lookZ: 0,
+
+    // Parts & dynamics
+    doorAngle: 0,
+    hoodAngle: 0,
+    wheelSpinSpeed: 1.5,
+  });
+
   const initialized = useRef(false);
 
   useMemo(() => {
@@ -76,7 +114,7 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
     scene.scale.setScalar(targetScale);
 
     scene.position.x = -center.x * targetScale;
-    scene.position.y = -box.min.y * targetScale; // wheels sit on ground
+    scene.position.y = -box.min.y * targetScale;
     scene.position.z = -center.z * targetScale;
 
     // 2. Discover nodes & collect meshes
@@ -185,6 +223,196 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
     initialized.current = true;
   }, [scene]);
 
+  // ── Single GSAP Timeline Bound to ScrollTrigger (scrub: 1) ──
+  useEffect(() => {
+    const s = animState.current;
+
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: document.body,
+          start: 'top top',
+          end: 'bottom bottom',
+          scrub: 1, // single GSAP timeline bound to ScrollTrigger (scrub: 1)
+          onUpdate: (self) => {
+            // Determine active phase for UI
+            const p = self.progress;
+            let currentPhase = 0;
+            if (p < 0.17) currentPhase = 0;
+            else if (p < 0.36) currentPhase = 1;
+            else if (p < 0.53) currentPhase = 2;
+            else if (p < 0.71) currentPhase = 3;
+            else if (p < 0.87) currentPhase = 4;
+            else currentPhase = 5;
+
+            if (currentPhase !== currentPhaseRef.current) {
+              currentPhaseRef.current = currentPhase;
+              onPhaseChange?.(currentPhase);
+            }
+          },
+        },
+      });
+
+      // SECTION 1 (0.00 → 0.16) HERO: Initial state
+      tl.set(s, {
+        carX: 0.35,
+        carY: -0.4,
+        carZ: 0.35,
+        carRotX: 0.02,
+        carRotY: 0.42,
+        carScale: 1.06,
+        camX: 0,
+        camY: 1.15,
+        camZ: 5.2,
+        camFov: 42,
+        lookX: 0.2,
+        lookY: 0.55,
+        lookZ: 0,
+        doorAngle: 0,
+        hoodAngle: 0,
+        wheelSpinSpeed: 1.5,
+      });
+
+      // SECTION 2 (0.17 → 0.35) DESIGN: Car rotates to side profile, text left, cards right
+      tl.to(
+        s,
+        {
+          carX: 0.0,
+          carY: -0.4,
+          carZ: -0.1,
+          carRotX: 0,
+          carRotY: Math.PI * 0.52, // 90° pure side profile
+          carScale: 1.08,
+          camX: -0.1,
+          camY: 0.95,
+          camZ: 4.9,
+          camFov: 40,
+          lookX: 0,
+          lookY: 0.6,
+          lookZ: 0,
+          doorAngle: 0,
+          hoodAngle: 0,
+          wheelSpinSpeed: 2.0,
+          ease: 'power2.inOut',
+          duration: 2.0,
+        },
+        '+=0.2'
+      );
+
+      // SECTION 3 (0.36 → 0.52) INTERIOR/DOORS: Front doors open, camera moves closer
+      tl.to(
+        s,
+        {
+          carX: 0.2,
+          carRotY: Math.PI * 0.40,
+          carScale: 1.12,
+          camX: 1.35,
+          camY: 0.98,
+          camZ: 2.7, // camera close to cabin
+          camFov: 38,
+          lookX: 0.3,
+          lookY: 0.75,
+          lookZ: 0.3,
+          doorAngle: Math.PI / 2.6, // doors open
+          hoodAngle: 0,
+          wheelSpinSpeed: 1.0,
+          ease: 'power2.inOut',
+          duration: 2.0,
+        }
+      );
+
+      // Close doors slightly before engine section
+      tl.to(
+        s,
+        {
+          doorAngle: 0,
+          ease: 'power1.out',
+          duration: 0.6,
+        }
+      );
+
+      // SECTION 4 (0.53 → 0.70) ENGINE/PERFORMANCE: Hood opens, camera top-down on V6
+      tl.to(
+        s,
+        {
+          carX: 0.0,
+          carRotX: 0.08,
+          carRotY: 0.05, // facing front directly
+          carScale: 1.15,
+          camX: 0.0,
+          camY: 3.2, // high top-down perspective
+          camZ: 3.2,
+          camFov: 46,
+          lookX: 0,
+          lookY: 0.6,
+          lookZ: 1.3, // focus on engine bay
+          hoodAngle: Math.PI / 3.4, // hood lifts
+          wheelSpinSpeed: 1.0,
+          ease: 'power2.inOut',
+          duration: 2.0,
+        }
+      );
+
+      // Close hood before wheels section
+      tl.to(
+        s,
+        {
+          hoodAngle: 0,
+          carRotX: 0,
+          ease: 'power1.out',
+          duration: 0.6,
+        }
+      );
+
+      // SECTION 5 (0.71 → 0.86) WHEELS/OFF-ROAD: Camera low on wheels, tyres spin, dark background
+      tl.to(
+        s,
+        {
+          carX: 0.25,
+          carY: -0.45, // squat low on suspension
+          carRotY: Math.PI * 0.35,
+          carScale: 1.18,
+          camX: -1.8,
+          camY: 0.28, // asphalt low angle
+          camZ: 2.3,
+          camFov: 48,
+          lookX: -0.7,
+          lookY: 0.38,
+          lookZ: 1.2, // look at front wheel hub
+          wheelSpinSpeed: 38.0, // high velocity burnout spin
+          ease: 'power2.inOut',
+          duration: 2.0,
+        }
+      );
+
+      // SECTION 6 (0.87 → 1.00) FINAL CTA: Car returns to hero pose
+      tl.to(
+        s,
+        {
+          carX: 0.32,
+          carY: -0.4,
+          carZ: 0.3,
+          carRotY: 0.42, // returns to hero 3/4 front view
+          carScale: 1.05,
+          camX: 0,
+          camY: 1.15,
+          camZ: 5.2,
+          camFov: 42,
+          lookX: 0.18,
+          lookY: 0.55,
+          lookZ: 0,
+          doorAngle: 0,
+          hoodAngle: 0,
+          wheelSpinSpeed: 1.0,
+          ease: 'power2.inOut',
+          duration: 1.8,
+        }
+      );
+    });
+
+    return () => ctx.revert();
+  }, [onPhaseChange]);
+
   // Update Paint Color
   useEffect(() => {
     const colorHex = new THREE.Color(controls.currentColor.hex);
@@ -214,33 +442,26 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
     });
   }, [controls.lightsOn]);
 
-  // ── Per-Frame Choreography (6 Targeted Sections) ──
+  // ── Render Frame Loop ──
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
+    const s = animState.current;
     const p = pivots.current;
     const t = clock.getElapsedTime();
-    const sp = scrollProgressRef.current; // 0.0 → 1.0
+    const sp = scrollProgressRef.current;
 
-    // Section 1: 0.00 → 0.16 (Hero)
-    // Section 2: 0.17 → 0.35 (Design)
-    // Section 3: 0.36 → 0.52 (Interior / Doors)
-    // Section 4: 0.53 → 0.70 (Engine / Top-down)
-    // Section 5: 0.71 → 0.86 (Wheels / Low)
-    // Section 6: 0.87 → 1.00 (Final CTA / Return to Hero)
+    // Smooth mouse parallax in hero section
+    mouse.current.x = lerp(mouse.current.x, mouse.current.targetX, 0.06);
+    mouse.current.y = lerp(mouse.current.y, mouse.current.targetY, 0.06);
 
-    let currentPhase = 0;
-    if (sp < 0.17) currentPhase = 0;
-    else if (sp < 0.36) currentPhase = 1;
-    else if (sp < 0.53) currentPhase = 2;
-    else if (sp < 0.71) currentPhase = 3;
-    else if (sp < 0.87) currentPhase = 4;
-    else currentPhase = 5;
+    const heroFade = Math.max(0, 1 - sp / 0.18);
+    const mouseTiltY = mouse.current.x * 0.12 * heroFade;
+    const mouseTiltX = -mouse.current.y * 0.07 * heroFade;
 
-    if (currentPhase !== currentPhaseRef.current) {
-      currentPhaseRef.current = currentPhase;
-      onPhaseChange?.(currentPhase);
-    }
+    // Subtle floating idle in hero and cta
+    const idleFloat = Math.sin(t * 1.3) * 0.025 * (heroFade + (sp > 0.88 ? 0.7 : 0));
 
+    // Manual overrides if user clicks HUD buttons
     if (controls.manualInspectionMode) {
       const doorAngle = controls.doorsOpen ? Math.PI / 2.3 : 0;
       const hoodAngle = controls.hoodOpen ? Math.PI / 3.4 : 0;
@@ -253,179 +474,28 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
       return;
     }
 
-    // ── Target Positions & Rotations ──
-    let carX = 0;
-    let carY = -0.4;
-    let carZ = 0;
-    let carRotY = 0.42; // Hero 3/4 front
-    let carRotX = 0;
-    let carScale = 1.0;
+    // Apply Car transforms with mouse parallax
+    groupRef.current.position.set(s.carX, s.carY + idleFloat, s.carZ);
+    groupRef.current.rotation.set(s.carRotX + mouseTiltX, s.carRotY + mouseTiltY, s.carRotZ);
+    groupRef.current.scale.setScalar(s.carScale);
 
-    let camX = 0;
-    let camY = 1.1;
-    let camZ = 5.2;
-    let lookX = 0.15;
-    let lookY = 0.5;
-    let lookZ = 0;
-
-    let doorAngle = 0;
-    let hoodAngle = 0;
-    let wheelSpinRate = 1.5;
-
-    if (sp < 0.17) {
-      // ──────────────────────────────────────────────────────────
-      // 1. HERO: 3/4 front view, popping out, subtle floating idle
-      // ──────────────────────────────────────────────────────────
-      const s1 = smoothstep(0, 0.16, sp);
-      const idleFloat = Math.sin(t * 1.4) * 0.035;
-
-      carX = 0.35;
-      carY = -0.4 + idleFloat;
-      carZ = 0.35; // slightly forward for "popping" out feel
-      carRotY = 0.42 + Math.sin(t * 0.5) * 0.02; // subtle breathe
-      carRotX = 0.02;
-      carScale = 1.06;
-
-      camX = 0;
-      camY = 1.15;
-      camZ = 5.2;
-      lookX = 0.2;
-      lookY = 0.55;
-      lookZ = 0;
-    } else if (sp < 0.36) {
-      // ──────────────────────────────────────────────────────────
-      // 2. DESIGN: Car rotates to side profile, text left, cards right
-      // ──────────────────────────────────────────────────────────
-      const s2 = smoothstep(0.17, 0.35, sp);
-      carX = lerp(0.35, 0.0, s2);
-      carY = -0.4;
-      carZ = lerp(0.35, -0.1, s2);
-      carRotY = lerp(0.42, Math.PI * 0.52, s2); // 90° pure side profile
-      carRotX = 0;
-      carScale = 1.08;
-
-      camX = lerp(0, -0.1, s2);
-      camY = lerp(1.15, 0.95, s2);
-      camZ = lerp(5.2, 4.9, s2);
-      lookX = 0;
-      lookY = 0.6;
-      lookZ = 0;
-    } else if (sp < 0.53) {
-      // ──────────────────────────────────────────────────────────
-      // 3. INTERIOR/DOORS: Front doors open, camera moves closer
-      // ──────────────────────────────────────────────────────────
-      const s3 = smoothstep(0.36, 0.52, sp);
-      
-      // Doors open smoothly to 65 degrees
-      const doorOpenCurve = Math.sin(s3 * Math.PI);
-      doorAngle = doorOpenCurve * (Math.PI / 2.6);
-
-      carX = 0.2;
-      carY = -0.4;
-      carZ = 0;
-      carRotY = lerp(Math.PI * 0.52, Math.PI * 0.40, s3); // angle slightly towards viewer
-      carScale = 1.12;
-
-      // Camera swoops close into the driver cabin
-      camX = lerp(-0.1, 1.35, s3);
-      camY = lerp(0.95, 0.98, s3);
-      camZ = lerp(4.9, 2.7, s3);
-      lookX = lerp(0, 0.3, s3);
-      lookY = lerp(0.6, 0.75, s3);
-      lookZ = lerp(0, 0.3, s3);
-    } else if (sp < 0.71) {
-      // ──────────────────────────────────────────────────────────
-      // 4. ENGINE/PERFORMANCE: Hood opens, camera TOP-DOWN on V6
-      // ──────────────────────────────────────────────────────────
-      const s4 = smoothstep(0.53, 0.70, sp);
-
-      // Hood lifts open
-      const hoodOpenCurve = Math.sin(s4 * Math.PI);
-      hoodAngle = hoodOpenCurve * (Math.PI / 3.4);
-
-      carX = 0;
-      carY = -0.4;
-      carZ = 0;
-      carRotY = lerp(Math.PI * 0.40, 0.05, s4); // Face camera directly
-      carRotX = lerp(0, 0.08, s4); // slight tilt
-      carScale = 1.15;
-
-      // Camera moves to high top-down perspective looking into engine bay
-      camX = lerp(1.35, 0.0, s4);
-      camY = lerp(0.98, 3.2, s4); // high top-down Y
-      camZ = lerp(2.7, 3.2, s4);  // looking downward
-      lookX = 0;
-      lookY = 0.6;
-      lookZ = 1.3; // focus directly on engine block (z ~ 1.3)
-    } else if (sp < 0.87) {
-      // ──────────────────────────────────────────────────────────
-      // 5. WHEELS/OFF-ROAD: Camera LOW on wheels, tyres spin fast
-      // ──────────────────────────────────────────────────────────
-      const s5 = smoothstep(0.71, 0.86, sp);
-
-      carX = lerp(0, 0.25, s5);
-      carY = lerp(-0.4, -0.45, s5); // squat low on suspension
-      carZ = 0;
-      carRotY = lerp(0.05, Math.PI * 0.35, s5);
-      carRotX = 0;
-      carScale = 1.18;
-
-      // Camera LOW angle close to the asphalt
-      camX = lerp(0, -1.8, s5);
-      camY = lerp(3.2, 0.28, s5); // just above ground
-      camZ = lerp(3.2, 2.3, s5);
-      lookX = -0.7;
-      lookY = 0.38;
-      lookZ = 1.2; // look at front-wheel hub
-
-      wheelSpinRate = 32.0; // intense burnout spin
-    } else {
-      // ──────────────────────────────────────────────────────────
-      // 6. FINAL CTA: Car returns to hero pose, ready for test drive
-      // ──────────────────────────────────────────────────────────
-      const s6 = smoothstep(0.87, 1.0, sp);
-
-      carX = lerp(0.25, 0.32, s6);
-      carY = -0.4 + Math.sin(t * 1.2) * 0.02;
-      carZ = lerp(0, 0.3, s6);
-      carRotY = lerp(Math.PI * 0.35, 0.42, s6); // returns to hero 3/4
-      carRotX = 0;
-      carScale = 1.05;
-
-      camX = lerp(-1.8, 0, s6);
-      camY = lerp(0.28, 1.15, s6);
-      camZ = lerp(2.3, 5.2, s6);
-      lookX = 0.18;
-      lookY = 0.55;
-      lookZ = 0;
-
-      wheelSpinRate = 1.0;
+    // Apply Camera transforms & FOV
+    camera.position.set(s.camX, s.camY, s.camZ);
+    const perspCam = camera as THREE.PerspectiveCamera;
+    if (perspCam.fov !== s.camFov) {
+      perspCam.fov = s.camFov;
+      perspCam.updateProjectionMatrix();
     }
+    camera.lookAt(s.lookX, s.lookY, s.lookZ);
 
-    // Apply smooth car transforms
-    groupRef.current.position.x = lerp(groupRef.current.position.x, carX, 0.08);
-    groupRef.current.position.y = lerp(groupRef.current.position.y, carY, 0.08);
-    groupRef.current.position.z = lerp(groupRef.current.position.z, carZ, 0.08);
-    groupRef.current.rotation.y = lerp(groupRef.current.rotation.y, carRotY, 0.08);
-    groupRef.current.rotation.x = lerp(groupRef.current.rotation.x, carRotX, 0.08);
+    // Apply Doors & Hood
+    if (p.doorFL) p.doorFL.rotation.y = s.doorAngle;
+    if (p.doorFR) p.doorFR.rotation.y = -s.doorAngle;
+    if (p.hood) p.hood.rotation.x = -s.hoodAngle;
 
-    const curScale = groupRef.current.scale.x;
-    groupRef.current.scale.setScalar(lerp(curScale, carScale, 0.08));
-
-    // Apply smooth camera transforms
-    camera.position.x = lerp(camera.position.x, camX, 0.08);
-    camera.position.y = lerp(camera.position.y, camY, 0.08);
-    camera.position.z = lerp(camera.position.z, camZ, 0.08);
-    camera.lookAt(lookX, lookY, lookZ);
-
-    // Apply door & hood rotations
-    if (p.doorFL) p.doorFL.rotation.y = lerp(p.doorFL.rotation.y, doorAngle, 0.1);
-    if (p.doorFR) p.doorFR.rotation.y = lerp(p.doorFR.rotation.y, -doorAngle, 0.1);
-    if (p.hood) p.hood.rotation.x = lerp(p.hood.rotation.x, -hoodAngle, 0.1);
-
-    // Wheel spin
+    // Apply Wheel spin
     p.wheels.forEach((w) => {
-      w.rotation.x += 0.03 * wheelSpinRate;
+      w.rotation.x += 0.03 * s.wheelSpinSpeed;
     });
   });
 
