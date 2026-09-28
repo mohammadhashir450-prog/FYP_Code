@@ -1,31 +1,92 @@
 'use client';
-import Link from 'next/link';
-import { redirect } from 'next/navigation';
+import { useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 
-export default function RootPage() {
-  return (
-    <main style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'var(--bg-primary)',
-    }}>
+// Dynamically import SplashScreen (no SSR — needs WebGL)
+const SplashScreen = dynamic(() => import('@/components/SplashScreen'), {
+  ssr: false,
+  loading: () => (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: '#05070d',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+      }}
+    >
+      {/* Minimal pre-hydration loader */}
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '48px', marginBottom: 16 }}>🔧</div>
-        <h1 style={{ fontSize: '32px', fontWeight: 800, marginBottom: 8 }}>
-          <span className="gradient-text">ProServe</span>
-        </h1>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: 32 }}>Service Provider Portal</p>
-        <div style={{ display: 'flex', gap: 16, justifyContent: 'center' }}>
-          <Link href="/login" className="btn btn-primary">
-            Sign In
-          </Link>
-          <Link href="/dashboard" className="btn btn-secondary">
-            View Dashboard
-          </Link>
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            background: 'linear-gradient(135deg, #d4af37 0%, #7c5a1e 100%)',
+            borderRadius: '10px',
+            margin: '0 auto 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 0 24px rgba(212,175,55,0.4)',
+          }}
+        >
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+            <path d="M12 2L2 9L12 16L22 9L12 2Z" fill="#080c14" />
+            <path d="M2 15L12 22L22 15" stroke="#080c14" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        <div
+          style={{
+            fontFamily: "'Cinzel', Georgia, serif",
+            fontSize: '16px',
+            fontWeight: 800,
+            letterSpacing: '3px',
+            color: '#f8fafc',
+          }}
+        >
+          REPAIREASE
+        </div>
+        <div
+          style={{
+            fontSize: '9px',
+            color: '#64748b',
+            letterSpacing: '2px',
+            marginTop: '4px',
+            fontFamily: 'monospace',
+          }}
+        >
+          INITIALIZING...
         </div>
       </div>
-    </main>
-  );
+    </div>
+  ),
+});
+
+export default function RootPage() {
+  const router = useRouter();
+  const [splashDone, setSplashDone] = useState(false);
+
+  const handleSplashComplete = useCallback(() => {
+    setSplashDone(true);
+    router.push('/login');
+  }, [router]);
+
+  // Once splash done, show nothing (router will handle redirect)
+  if (splashDone) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: '#05070d',
+          zIndex: 9999,
+        }}
+      />
+    );
+  }
+
+  return <SplashScreen onComplete={handleSplashComplete} />;
 }
