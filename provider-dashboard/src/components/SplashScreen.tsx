@@ -1,92 +1,191 @@
 'use client';
 import { Suspense, useRef, useEffect, useState } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { useGLTF, Environment, ContactShadows, PresentationControls } from '@react-three/drei';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import {
+  useGLTF,
+  useProgress,
+  Environment,
+  ContactShadows,
+  Html,
+  Center,
+} from '@react-three/drei';
 import * as THREE from 'three';
 
-// ── LAND CRUISER 3D MODEL ──────────────────────────────────────────
-function LandCruiserModel({ progress }: { progress: number }) {
-  const { scene } = useGLTF('/2022_toyota_land_cruiser_300_vx.r.glb');
-  const groupRef = useRef<THREE.Group>(null!);
+// ── PRELOAD immediately so browser starts fetching on import ────────
+useGLTF.preload('/2022_toyota_land_cruiser_300_vx.r.glb');
+
+// ── AUTO-FIT CAMERA to the model's bounding box ───────────────────
+function AutoCamera({ target }: { target: THREE.Box3 | null }) {
+  const { camera } = useThree();
+  const fitted = useRef(false);
 
   useEffect(() => {
+    if (!target || fitted.current) return;
+    const size = new THREE.Vector3();
+    const center = new THREE.Vector3();
+    target.getSize(size);
+    target.getCenter(center);
+
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const fov = (camera as THREE.PerspectiveCamera).fov * (Math.PI / 180);
+    let dist = Math.abs(maxDim / 2 / Math.tan(fov / 2)) * 1.55;
+    dist = Math.max(dist, 3);
+
+    camera.position.set(center.x + dist * 0.6, center.y + dist * 0.35, center.z + dist);
+    camera.lookAt(center.x, center.y + size.y * 0.05, center.z);
+    camera.updateProjectionMatrix();
+    fitted.current = true;
+  }, [target, camera]);
+
+  return null;
+}
+
+// ── LAND CRUISER MODEL ─────────────────────────────────────────────
+function LandCruiserModel({
+  onBounds,
+}: {
+  onBounds: (box: THREE.Box3) => void;
+}) {
+  const { scene } = useGLTF('/2022_toyota_land_cruiser_300_vx.r.glb');
+  const groupRef = useRef<THREE.Group>(null!);
+  const reported = useRef(false);
+
+  // Enhance materials and compute bounds once
+  useEffect(() => {
     scene.traverse((child) => {
-      if ((child as THREE.Mesh).isMesh) {
-        const mesh = child as THREE.Mesh;
-        if (mesh.material) {
-          const mat = mesh.material as THREE.MeshStandardMaterial;
-          mat.envMapIntensity = 2.5;
-        }
+      const mesh = child as THREE.Mesh;
+      if (mesh.isMesh && mesh.material) {
+        const mat = Array.isArray(mesh.material)
+          ? (mesh.material as THREE.MeshStandardMaterial[])
+          : [mesh.material as THREE.MeshStandardMaterial];
+        mat.forEach((m) => {
+          if (m.isMeshStandardMaterial) {
+            m.envMapIntensity = 2.2;
+            m.needsUpdate = true;
+          }
+        });
       }
     });
-  }, [scene]);
 
+    if (!reported.current) {
+      const box = new THREE.Box3().setFromObject(scene);
+      onBounds(box);
+      reported.current = true;
+    }
+  }, [scene, onBounds]);
+
+  // Slow rotation + float
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
-    // Slow continuous rotation after loading
-    groupRef.current.rotation.y = clock.getElapsedTime() * 0.18;
-    // Subtle floating animation
-    groupRef.current.position.y = Math.sin(clock.getElapsedTime() * 0.6) * 0.04 - 0.2;
+    const t = clock.getElapsedTime();
+    groupRef.current.rotation.y = t * 0.15;
+    groupRef.current.position.y = Math.sin(t * 0.55) * 0.06;
   });
 
   return (
-    <group ref={groupRef} scale={[0.85, 0.85, 0.85]} position={[0, -0.2, 0]}>
-      <primitive object={scene} />
-    </group>
+    <Center>
+      <group ref={groupRef}>
+        <primitive object={scene} />
+      </group>
+    </Center>
   );
 }
 
-// ── GROUND GRID PLANE ─────────────────────────────────────────────
-function GroundGrid() {
+// ── LOADING PROGRESS INSIDE CANVAS (drei useProgress) ─────────────
+function Loader() {
+  const { progress } = useProgress();
+  return (
+    <Html center>
+      <div
+        style={{
+          color: '#d4af37',
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: '11px',
+          letterSpacing: '1.5px',
+          textAlign: 'center',
+          minWidth: '160px',
+        }}
+      >
+        <div style={{ marginBottom: '8px', opacity: 0.7 }}>LOADING MODEL</div>
+        <div
+          style={{
+            width: '140px',
+            height: '2px',
+            background: 'rgba(255,255,255,0.08)',
+            borderRadius: '2px',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              width: `${progress}%`,
+              height: '100%',
+              background: 'linear-gradient(90deg, #d4af37, #f3e5ab)',
+              boxShadow: '0 0 8px rgba(212,175,55,0.7)',
+              transition: 'width 0.15s ease',
+            }}
+          />
+        </div>
+        <div style={{ marginTop: '6px', color: '#64748b' }}>{Math.round(progress)}%</div>
+      </div>
+    </Html>
+  );
+}
+
+// ── GROUND GRID ────────────────────────────────────────────────────
+function GroundGrid({ y }: { y: number }) {
   return (
     <gridHelper
-      args={[30, 30, '#1a2035', '#0f1620']}
-      position={[0, -0.88, 0]}
-      rotation={[0, 0, 0]}
+      args={[40, 40, '#111827', '#0b1020']}
+      position={[0, y, 0]}
     />
   );
 }
 
-// ── MAIN SPLASH SCREEN ─────────────────────────────────────────────
-export default function SplashScreen({ onComplete }: { onComplete: () => void }) {
-  const [loadingProgress, setLoadingProgress] = useState(0);
-  const [phase, setPhase] = useState<'loading' | 'reveal' | 'fadeout'>('loading');
-  const [showModel, setShowModel] = useState(false);
-  const [modelLoaded, setModelLoaded] = useState(false);
+// ── PROGRESS WATCHER: calls onReady when drei finishes loading ─────
+function ProgressWatcher({ onReady }: { onReady: () => void }) {
+  const { progress, active } = useProgress();
+  const fired = useRef(false);
 
-  // Simulate loading progress
-  useEffect(() => {
-    let val = 0;
-    const interval = setInterval(() => {
-      val += Math.random() * 6 + 2;
-      if (val >= 95) {
-        val = 95;
-        clearInterval(interval);
-      }
-      setLoadingProgress(Math.min(val, 95));
-    }, 80);
-    return () => clearInterval(interval);
-  }, []);
-
-  // When model is loaded, complete to 100% and move to reveal
-  useEffect(() => {
-    if (modelLoaded) {
-      setLoadingProgress(100);
-      setTimeout(() => {
-        setPhase('reveal');
-        setShowModel(true);
-      }, 400);
-
-      // After reveal animation, fade out and call onComplete
-      setTimeout(() => {
-        setPhase('fadeout');
-      }, 3200);
-
-      setTimeout(() => {
-        onComplete();
-      }, 4000);
+  useFrame(() => {
+    if (!fired.current && progress >= 100 && !active) {
+      fired.current = true;
+      onReady();
     }
-  }, [modelLoaded, onComplete]);
+  });
+  return null;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// MAIN SPLASH SCREEN
+// ─────────────────────────────────────────────────────────────────
+export default function SplashScreen({ onComplete }: { onComplete: () => void }) {
+  const [bounds, setBounds] = useState<THREE.Box3 | null>(null);
+  const [modelReady, setModelReady] = useState(false);
+  const [fadeOut, setFadeOut] = useState(false);
+
+  // After model is ready, auto-exit after 3.5 s
+  useEffect(() => {
+    if (!modelReady) return;
+    const t = setTimeout(() => triggerExit(), 3500);
+    return () => clearTimeout(t);
+  }, [modelReady]);
+
+  const triggerExit = () => {
+    setFadeOut(true);
+    setTimeout(onComplete, 800);
+  };
+
+  // Compute ground Y from bounding box
+  const groundY = bounds
+    ? (() => {
+        const min = new THREE.Vector3();
+        bounds.getSize(min);
+        const center = new THREE.Vector3();
+        bounds.getCenter(center);
+        return center.y - min.y / 2;
+      })()
+    : -1;
 
   return (
     <div
@@ -94,280 +193,325 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
         position: 'fixed',
         inset: 0,
         zIndex: 9999,
-        background: '#05070d',
+        background: '#06080f',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        opacity: phase === 'fadeout' ? 0 : 1,
-        transition: phase === 'fadeout' ? 'opacity 0.85s cubic-bezier(0.4,0,0.2,1)' : 'none',
+        opacity: fadeOut ? 0 : 1,
+        transition: 'opacity 0.8s cubic-bezier(0.4,0,0.2,1)',
         overflow: 'hidden',
+        fontFamily: "'Inter', sans-serif",
       }}
     >
-      {/* ── Ambient background radials ───────────────────────── */}
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: `
-          radial-gradient(ellipse 70% 50% at 50% 100%, rgba(212,175,55,0.07) 0%, transparent 70%),
-          radial-gradient(ellipse 40% 30% at 20% 20%, rgba(59,130,246,0.04) 0%, transparent 60%),
-          radial-gradient(ellipse 40% 30% at 80% 10%, rgba(139,92,246,0.04) 0%, transparent 60%)
-        `,
-      }} />
-
-      {/* Scanline overlay */}
-      <div style={{
-        position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 2,
-        backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.08) 2px, rgba(0,0,0,0.08) 4px)',
-      }} />
-
-      {/* ── TOP BRAND HEADER ──────────────────────────────────── */}
+      {/* ── Background glow layers ─── */}
       <div
         style={{
-          position: 'absolute', top: '36px', left: 0, right: 0,
-          display: 'flex', justifyContent: 'center', alignItems: 'center',
-          gap: '14px', zIndex: 10,
-          opacity: phase === 'loading' ? 1 : showModel ? 1 : 0,
-          transition: 'opacity 0.5s ease',
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          background: `
+            radial-gradient(ellipse 80% 45% at 50% 100%, rgba(212,175,55,0.09) 0%, transparent 65%),
+            radial-gradient(ellipse 50% 35% at 15% 15%, rgba(59,130,246,0.04) 0%, transparent 55%),
+            radial-gradient(ellipse 45% 30% at 85% 10%, rgba(139,92,246,0.04) 0%, transparent 55%)
+          `,
+        }}
+      />
+      {/* Scanlines */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          zIndex: 2,
+          backgroundImage:
+            'repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.07) 3px,rgba(0,0,0,0.07) 4px)',
+        }}
+      />
+
+      {/* ── TOP BRAND ─── */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 32,
+          left: 0,
+          right: 0,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 14,
+          zIndex: 20,
         }}
       >
-        {/* Gold emblem */}
-        <div style={{
-          width: 38, height: 38,
-          background: 'linear-gradient(135deg, #d4af37 0%, #7c5a1e 100%)',
-          borderRadius: '9px',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 0 24px rgba(212,175,55,0.5)',
-          border: '1px solid rgba(255,235,170,0.4)',
-        }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <path d="M12 2L2 9L12 16L22 9L12 2Z" fill="#080c14" />
-            <path d="M2 15L12 22L22 15" stroke="#080c14" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+        <div
+          style={{
+            width: 40,
+            height: 40,
+            background: 'linear-gradient(135deg,#d4af37 0%,#7c5a1e 100%)',
+            borderRadius: 10,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 0 28px rgba(212,175,55,0.55)',
+            border: '1px solid rgba(255,235,170,0.35)',
+            flexShrink: 0,
+          }}
+        >
+          {/* wrench icon */}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#07090e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
           </svg>
         </div>
         <div>
-          <div style={{
-            fontFamily: "'Cinzel', Georgia, serif",
-            fontSize: '18px', fontWeight: 800, letterSpacing: '3px',
-            color: '#f8fafc',
-          }}>
+          <div
+            style={{
+              fontFamily: "'Cinzel', Georgia, serif",
+              fontSize: 20,
+              fontWeight: 800,
+              letterSpacing: '3.5px',
+              color: '#f8fafc',
+              lineHeight: 1.1,
+            }}
+          >
             REPAIREASE
           </div>
-          <div style={{
-            fontSize: '9px', fontWeight: 700, color: '#c5a059',
-            letterSpacing: '2.5px', textTransform: 'uppercase',
-            fontFamily: "'JetBrains Mono', monospace",
-          }}>
+          <div
+            style={{
+              fontSize: 9,
+              fontWeight: 700,
+              color: '#c5a059',
+              letterSpacing: '2.5px',
+              textTransform: 'uppercase',
+              fontFamily: "'JetBrains Mono', monospace",
+              marginTop: 2,
+            }}
+          >
             PROVIDER MANAGEMENT PORTAL
           </div>
         </div>
       </div>
 
-      {/* ── 3D CANVAS ─────────────────────────────────────────── */}
+      {/* ── 3D CANVAS (full height) ─── */}
       <div
         style={{
-          width: '100%',
-          height: '65vh',
-          position: 'relative',
-          opacity: showModel ? 1 : 0,
-          transform: showModel ? 'scale(1) translateY(0)' : 'scale(0.96) translateY(30px)',
-          transition: 'all 1.2s cubic-bezier(0.34,1.56,0.64,1)',
+          position: 'absolute',
+          inset: 0,
           zIndex: 5,
         }}
       >
         <Canvas
-          camera={{ position: [4, 1.5, 5], fov: 38 }}
+          camera={{ position: [6, 3, 10], fov: 42, near: 0.1, far: 500 }}
           gl={{ antialias: true, alpha: true }}
-          onCreated={() => {}}
-          style={{ background: 'transparent' }}
+          style={{ background: 'transparent', width: '100%', height: '100%' }}
         >
-          <Suspense fallback={null}>
-            <ambientLight intensity={0.4} />
-            <directionalLight position={[8, 10, 5]} intensity={1.8} castShadow color="#fff8e7" />
-            <directionalLight position={[-6, 4, -4]} intensity={0.6} color="#b8d4ff" />
-            <spotLight position={[0, 8, 0]} intensity={0.5} color="#d4af37" angle={0.4} penumbra={0.8} />
+          {/* Lighting */}
+          <ambientLight intensity={0.55} />
+          <directionalLight
+            position={[10, 12, 8]}
+            intensity={2.2}
+            castShadow
+            color="#fffae8"
+            shadow-mapSize={[2048, 2048]}
+          />
+          <directionalLight position={[-8, 6, -6]} intensity={0.8} color="#c8deff" />
+          <spotLight
+            position={[0, 10, 2]}
+            intensity={0.9}
+            color="#d4af37"
+            angle={0.5}
+            penumbra={1}
+          />
+          <pointLight position={[0, -1, 4]} intensity={0.4} color="#d4af37" />
 
-            <PresentationControls
-              global
-              rotation={[0, -0.2, 0]}
-              polar={[-0.08, 0.15]}
-              azimuth={[-Infinity, Infinity]}
-            >
-              <LandCruiserModel progress={loadingProgress} />
-            </PresentationControls>
-
-            <GroundGrid />
-            <ContactShadows position={[0, -0.88, 0]} opacity={0.45} scale={12} blur={2.5} far={4} />
+          <Suspense fallback={<Loader />}>
+            <LandCruiserModel onBounds={setBounds} />
+            <AutoCamera target={bounds} />
+            <GroundGrid y={groundY} />
+            <ContactShadows
+              position={[0, groundY, 0]}
+              opacity={0.55}
+              scale={20}
+              blur={3}
+              far={6}
+            />
             <Environment preset="city" />
-
-            {/* Trigger onLoad */}
-            <OnLoadTrigger onLoad={() => setModelLoaded(true)} />
+            <ProgressWatcher onReady={() => setModelReady(true)} />
           </Suspense>
         </Canvas>
       </div>
 
-      {/* ── BOTTOM UI: Loading Bar + Text ─────────────────────── */}
+      {/* ── BOTTOM HUD ─── */}
       <div
         style={{
           position: 'absolute',
-          bottom: 0, left: 0, right: 0,
-          padding: '0 48px 44px',
-          zIndex: 10,
+          bottom: 0,
+          left: 0,
+          right: 0,
+          padding: '0 48px 36px',
+          zIndex: 20,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 10,
         }}
       >
-        {/* Status text */}
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-          marginBottom: '10px',
-        }}>
-          <div style={{
-            fontSize: '10px', fontWeight: 700, color: '#64748b',
-            letterSpacing: '1.5px', fontFamily: "'JetBrains Mono', monospace",
-          }}>
-            {loadingProgress < 100
-              ? `INITIALIZING SYSTEM... ${Math.round(loadingProgress)}%`
-              : 'SYSTEM READY'}
+        {/* Status row */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 7,
+              fontSize: 10,
+              fontFamily: "'JetBrains Mono', monospace",
+              color: '#64748b',
+              letterSpacing: '1.2px',
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                background: modelReady ? '#22c55e' : '#d4af37',
+                boxShadow: `0 0 8px ${modelReady ? '#22c55e' : '#d4af37'}`,
+                display: 'inline-block',
+              }}
+            />
+            {modelReady ? 'SYSTEM READY' : 'LOADING ASSETS...'}
           </div>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '7px',
-            fontSize: '10px', color: '#64748b',
-            fontFamily: "'JetBrains Mono', monospace",
-          }}>
-            <span style={{
-              width: 6, height: 6, borderRadius: '50%',
-              background: loadingProgress < 100 ? '#d4af37' : '#22c55e',
-              boxShadow: `0 0 8px ${loadingProgress < 100 ? '#d4af37' : '#22c55e'}`,
-              animation: 'pulse 1.5s infinite',
-            }} />
-            <span>REPAIREASE v1.0</span>
+
+          <div
+            style={{
+              fontSize: 10,
+              color: '#374151',
+              fontFamily: "'JetBrains Mono', monospace",
+              letterSpacing: '1px',
+            }}
+          >
+            REPAIREASE v1.0 · 2026
           </div>
         </div>
 
-        {/* Progress bar */}
-        <div style={{
-          width: '100%', height: '2px',
-          background: 'rgba(255,255,255,0.06)',
-          borderRadius: '2px', overflow: 'hidden',
-        }}>
-          <div style={{
-            height: '100%',
-            width: `${loadingProgress}%`,
-            background: `linear-gradient(90deg, ${loadingProgress < 100 ? '#d4af37' : '#22c55e'} 0%, ${loadingProgress < 100 ? '#f3e5ab' : '#4ade80'} 100%)`,
-            boxShadow: `0 0 12px ${loadingProgress < 100 ? 'rgba(212,175,55,0.6)' : 'rgba(34,197,94,0.6)'}`,
-            borderRadius: '2px',
-            transition: 'width 0.25s ease',
-          }} />
-        </div>
+        {/* Gold progress line */}
+        <div
+          style={{
+            width: '100%',
+            height: 1,
+            background: modelReady
+              ? 'linear-gradient(90deg,rgba(34,197,94,0.6) 0%,rgba(34,197,94,0.1) 100%)'
+              : 'linear-gradient(90deg,rgba(212,175,55,0.5) 0%,rgba(212,175,55,0.08) 100%)',
+          }}
+        />
+      </div>
 
-        {/* Sub-labels */}
-        <div style={{
-          display: 'flex', justifyContent: 'space-between', marginTop: '8px',
-        }}>
-          <span style={{ fontSize: '9px', color: '#374151', fontFamily: "'JetBrains Mono', monospace" }}>
-            AUTHENTICATION GATEWAY ACTIVE
-          </span>
-          <span style={{ fontSize: '9px', color: '#374151', fontFamily: "'JetBrains Mono', monospace" }}>
-            2026 REPAIREASE TECHNOLOGIES
-          </span>
+      {/* ── VEHICLE CARD (bottom-left, appears when model ready) ─── */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 90,
+          left: 48,
+          zIndex: 20,
+          opacity: modelReady ? 1 : 0,
+          transform: modelReady ? 'translateX(0)' : 'translateX(-20px)',
+          transition: 'all 0.7s cubic-bezier(0.4,0,0.2,1)',
+        }}
+      >
+        <div
+          style={{
+            padding: '12px 18px',
+            background: 'rgba(5,8,14,0.88)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(212,175,55,0.25)',
+            borderLeft: '3px solid #d4af37',
+            borderRadius: '10px',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 9.5,
+              color: '#64748b',
+              letterSpacing: '1.5px',
+              fontFamily: "'JetBrains Mono', monospace",
+              marginBottom: 4,
+            }}
+          >
+            FEATURED VEHICLE
+          </div>
+          <div
+            style={{ fontSize: 15, fontWeight: 800, color: '#f8fafc', letterSpacing: 0.2 }}
+          >
+            Toyota Land Cruiser 300
+          </div>
+          <div style={{ fontSize: 11, color: '#c5a059', marginTop: 2 }}>
+            VX · 2022 · Premium Service Ready
+          </div>
         </div>
       </div>
 
-      {/* ── VEHICLE INFO CARD (shows after reveal) ────────────── */}
-      {showModel && (
-        <div
+      {/* ── ENTER PORTAL BUTTON (bottom-right) ─── */}
+      <div
+        style={{
+          position: 'absolute',
+          bottom: 90,
+          right: 48,
+          zIndex: 20,
+          opacity: modelReady ? 1 : 0,
+          transform: modelReady ? 'translateX(0)' : 'translateX(20px)',
+          transition: 'all 0.7s cubic-bezier(0.4,0,0.2,1) 0.15s',
+        }}
+      >
+        <button
+          onClick={() => triggerExit()}
           style={{
-            position: 'absolute',
-            bottom: '110px',
-            left: '52px',
-            zIndex: 10,
-            opacity: showModel ? 1 : 0,
-            transform: showModel ? 'translateX(0)' : 'translateX(-20px)',
-            transition: 'all 0.8s cubic-bezier(0.4,0,0.2,1) 0.6s',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: '13px 26px',
+            background: 'linear-gradient(135deg,#d4af37 0%,#b89327 100%)',
+            border: '1px solid rgba(255,235,170,0.4)',
+            borderRadius: 10,
+            color: '#07090e',
+            fontSize: 12,
+            fontWeight: 800,
+            letterSpacing: '1.5px',
+            cursor: 'pointer',
+            textTransform: 'uppercase',
+            boxShadow: '0 6px 28px rgba(212,175,55,0.45)',
+            transition: 'all 0.2s ease',
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.boxShadow =
+              '0 10px 36px rgba(212,175,55,0.65)';
+            (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)';
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.boxShadow =
+              '0 6px 28px rgba(212,175,55,0.45)';
+            (e.currentTarget as HTMLButtonElement).style.transform = 'none';
           }}
         >
-          <div style={{
-            padding: '12px 18px',
-            background: 'rgba(5,8,14,0.85)',
-            backdropFilter: 'blur(16px)',
-            border: '1px solid rgba(212,175,55,0.25)',
-            borderRadius: '10px',
-            borderLeft: '3px solid #d4af37',
-          }}>
-            <div style={{ fontSize: '10px', color: '#64748b', letterSpacing: '1.5px', fontFamily: "'JetBrains Mono', monospace", marginBottom: '4px' }}>
-              FEATURED VEHICLE
-            </div>
-            <div style={{ fontSize: '15px', fontWeight: 800, color: '#f8fafc', letterSpacing: '0.3px' }}>
-              Toyota Land Cruiser 300
-            </div>
-            <div style={{ fontSize: '11px', color: '#c5a059', marginTop: '2px' }}>
-              VX · 2022 · Premium Service Ready
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── ENTER BUTTON (shows when loaded) ──────────────────── */}
-      {phase === 'reveal' && (
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '110px',
-            right: '52px',
-            zIndex: 10,
-            opacity: 1,
-            animation: 'fadeInUp 0.7s ease 0.8s both',
-          }}
-        >
-          <button
-            onClick={() => {
-              setPhase('fadeout');
-              setTimeout(onComplete, 850);
-            }}
-            style={{
-              display: 'flex', alignItems: 'center', gap: '10px',
-              padding: '12px 24px',
-              background: 'linear-gradient(135deg, #d4af37 0%, #b89327 100%)',
-              border: '1px solid rgba(255,235,170,0.4)',
-              borderRadius: '9px',
-              color: '#07090e',
-              fontSize: '12px',
-              fontWeight: 800,
-              letterSpacing: '1.2px',
-              cursor: 'pointer',
-              boxShadow: '0 6px 24px rgba(212,175,55,0.4)',
-              transition: 'all 0.2s ease',
-              textTransform: 'uppercase',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget).style.boxShadow = '0 8px 32px rgba(212,175,55,0.6)';
-              (e.currentTarget).style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget).style.boxShadow = '0 6px 24px rgba(212,175,55,0.4)';
-              (e.currentTarget).style.transform = 'none';
-            }}
+          <span>Enter Portal</span>
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#07090e"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           >
-            <span>Enter Portal</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#07090e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
-          </button>
-        </div>
-      )}
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
     </div>
   );
 }
-
-// ── HELPER: Trigger callback on Three.js Suspense resolve ─────────
-function OnLoadTrigger({ onLoad }: { onLoad: () => void }) {
-  const triggered = useRef(false);
-  useFrame(() => {
-    if (!triggered.current) {
-      triggered.current = true;
-      onLoad();
-    }
-  });
-  return null;
-}
-
-// Preload the model
-useGLTF.preload('/2022_toyota_land_cruiser_300_vx.r.glb');
