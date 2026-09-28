@@ -1081,7 +1081,7 @@ export default function DashboardHome() {
                       fontSize: '11px',
                       fontFamily: 'JetBrains Mono',
                     }}
-                    formatter={(v: number) => [`PKR ${(v * 1.1).toFixed(2)}M`, 'NAV Yield']}
+                    formatter={(v: any) => [`PKR ${(Number(v || 0) * 1.1).toFixed(2)}M`, 'NAV Yield']}
                   />
                   <Area
                     type="monotone"
