@@ -9,7 +9,9 @@ import type { CarColorOption } from '../types';
 
 gsap.registerPlugin(ScrollTrigger);
 
-useGLTF.preload('/models/land-cruiser.glb');
+// Draco decoder URL (Google CDN)
+const DRACO_URL = 'https://www.gstatic.com/draco/versioned/decoders/1.5.7/';
+useGLTF.preload('/models/land-cruiser.glb', DRACO_URL);
 
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
@@ -29,7 +31,7 @@ interface CarModelProps {
 }
 
 export default function CarModel({ scrollProgressRef, controls, onPhaseChange }: CarModelProps) {
-  const { scene } = useGLTF('/models/land-cruiser.glb');
+  const { scene } = useGLTF('/models/land-cruiser.glb', DRACO_URL);
   const groupRef = useRef<THREE.Group>(null!);
   const currentPhaseRef = useRef<number>(0);
   const { camera } = useThree();

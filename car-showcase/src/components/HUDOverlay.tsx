@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Zap, Lightbulb, DoorClosed, RotateCcw } from 'lucide-react';
 import { SHOWCASE_SECTIONS } from '../types';
 import type { CarModelControls } from './CarModel';
@@ -17,10 +17,13 @@ export default function HUDOverlay({
   controls,
   onUpdateControls,
 }: HUDOverlayProps) {
-  const [speed, setSpeed] = useState(0);
-  const [rpm, setRpm] = useState(850);
-  const [gear, setGear] = useState('P');
-  const [progressPct, setProgressPct] = useState(0);
+  // DOM Refs for direct 60fps telemetry mutation without React re-renders
+  const speedRef = useRef<HTMLSpanElement>(null);
+  const gearRef = useRef<HTMLSpanElement>(null);
+  const rpmRef = useRef<HTMLSpanElement>(null);
+  const rpmBarRef = useRef<HTMLDivElement>(null);
+  const progressPctRef = useRef<HTMLSpanElement>(null);
+  const circleProgressRef = useRef<SVGPathElement>(null);
 
   useEffect(() => {
     let lastScroll = window.scrollY;
@@ -28,7 +31,7 @@ export default function HUDOverlay({
 
     const updateTelemetry = () => {
       const sp = scrollProgressRef.current;
-      setProgressPct(Math.round(sp * 100));
+      const pct = Math.round(sp * 100);
 
       const delta = Math.abs(window.scrollY - lastScroll);
       lastScroll = window.scrollY;
@@ -55,11 +58,20 @@ export default function HUDOverlay({
         currentRPM = 3800 + currentSpeed * 12;
       }
 
-      setSpeed(currentSpeed);
-      setGear(currentGear);
-      setRpm(currentRPM);
-      engineAudio.updateRPM(currentRPM);
+      // Mutate DOM nodes directly to prevent React tree re-renders
+      if (speedRef.current) speedRef.current.textContent = currentSpeed.toString().padStart(3, '0');
+      if (gearRef.current) gearRef.current.textContent = currentGear;
+      if (rpmRef.current) rpmRef.current.textContent = currentRPM.toString();
+      if (rpmBarRef.current) {
+        const barWidth = Math.min(100, ((currentRPM - 800) / 4500) * 100);
+        rpmBarRef.current.style.width = `${barWidth}%`;
+      }
+      if (progressPctRef.current) progressPctRef.current.textContent = `${pct}%`;
+      if (circleProgressRef.current) {
+        circleProgressRef.current.setAttribute('stroke-dasharray', `${pct}, 100`);
+      }
 
+      engineAudio.updateRPM(currentRPM);
       timerId = requestAnimationFrame(updateTelemetry);
     };
 
@@ -89,7 +101,9 @@ export default function HUDOverlay({
 
         {/* Circular Progress Badge */}
         <div className="glass-card px-3.5 py-2.5 rounded-2xl flex items-center gap-2.5">
-          <span className="text-xs font-mono font-bold text-white">{progressPct}%</span>
+          <span ref={progressPctRef} className="text-xs font-mono font-bold text-white">
+            0%
+          </span>
           <div className="relative w-6 h-6 flex items-center justify-center">
             <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
               <path
@@ -100,8 +114,9 @@ export default function HUDOverlay({
                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
               />
               <path
+                ref={circleProgressRef}
                 className="text-[#ccff00] transition-all duration-150"
-                strokeDasharray={`${progressPct}, 100`}
+                strokeDasharray="0, 100"
                 strokeWidth="3.5"
                 strokeLinecap="round"
                 stroke="currentColor"
@@ -118,8 +133,8 @@ export default function HUDOverlay({
         {/* Speedometer Cluster */}
         <div className="glass-card px-5 py-3 rounded-2xl flex items-center gap-4">
           <div className="flex items-baseline gap-1">
-            <span className="text-3xl font-display font-black tracking-tight text-white">
-              {speed.toString().padStart(3, '0')}
+            <span ref={speedRef} className="text-3xl font-display font-black tracking-tight text-white">
+              000
             </span>
             <span className="text-[10px] font-mono text-[#ccff00] font-bold">KM/H</span>
           </div>
@@ -128,7 +143,9 @@ export default function HUDOverlay({
 
           <div className="flex flex-col items-center">
             <span className="text-[8px] font-mono text-neutral-400">GEAR</span>
-            <span className="text-sm font-mono font-bold text-[#ccff00]">{gear}</span>
+            <span ref={gearRef} className="text-sm font-mono font-bold text-[#ccff00]">
+              P
+            </span>
           </div>
 
           <div className="h-7 w-px bg-white/10 hidden sm:block" />
@@ -136,12 +153,15 @@ export default function HUDOverlay({
           <div className="hidden sm:flex flex-col gap-1 w-20">
             <div className="flex justify-between text-[8px] font-mono text-neutral-400">
               <span>RPM</span>
-              <span className="text-white font-bold">{rpm}</span>
+              <span ref={rpmRef} className="text-white font-bold">
+                850
+              </span>
             </div>
             <div className="h-1 w-full bg-white/10 rounded-full overflow-hidden">
               <div
+                ref={rpmBarRef}
                 className="h-full bg-[#ccff00] transition-all duration-100"
-                style={{ width: `${Math.min(100, ((rpm - 800) / 4500) * 100)}%` }}
+                style={{ width: '0%' }}
               />
             </div>
           </div>

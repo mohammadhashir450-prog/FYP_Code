@@ -85,7 +85,7 @@ export default function CanvasContainer({
     >
       <Canvas
         shadows={!isMobile}
-        dpr={isMobile ? [1, 1.5] : [1, 2]}
+        dpr={isMobile ? [1, 1.5] : [1, Math.min(typeof window !== 'undefined' ? window.devicePixelRatio : 1, 1.75)]}
         camera={{ position: [0, 1.15, 5.2], fov: 42, near: 0.1, far: 100 }}
         gl={{
           antialias: true,

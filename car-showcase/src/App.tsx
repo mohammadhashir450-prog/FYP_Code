@@ -1,9 +1,8 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, lazy, Suspense } from 'react';
 import { useLenis } from './hooks/useLenis';
 import { useScrollProgress } from './hooks/useScrollProgress';
 import { CAR_COLORS } from './types';
 import type { CarColorOption } from './types';
-import CanvasContainer from './components/CanvasContainer';
 import Navbar from './components/Navbar';
 import HUDOverlay from './components/HUDOverlay';
 import ScrollSections from './components/ScrollSections';
@@ -11,7 +10,9 @@ import ReservationModal from './components/ReservationModal';
 import Preloader from './components/Preloader';
 import type { CarModelControls } from './components/CarModel';
 
-// Color interpolation utility for smooth background theme transitions (Light -> Dark)
+// Performance: Lazy load 3D Canvas container to keep initial bundle ultra-lean
+const CanvasContainer = lazy(() => import('./components/CanvasContainer'));
+
 function interpolateColor(
   color1: [number, number, number],
   color2: [number, number, number],
@@ -23,14 +24,13 @@ function interpolateColor(
   return `rgb(${r}, ${g}, ${b})`;
 }
 
-// Background stops from light ambient slate to pitch-black off-road abyss
 const BG_STOPS: { sp: number; rgb: [number, number, number] }[] = [
-  { sp: 0.0, rgb: [16, 21, 32] },  // Hero (lighter ambient slate)
-  { sp: 0.25, rgb: [13, 18, 27] }, // Design
-  { sp: 0.45, rgb: [10, 14, 23] }, // Interior
-  { sp: 0.65, rgb: [8, 11, 18] },  // Engine
-  { sp: 0.80, rgb: [2, 3, 6] },    // Wheels / Off-road (darkest pitch black)
-  { sp: 1.0, rgb: [7, 10, 18] },   // Final CTA
+  { sp: 0.0, rgb: [10, 10, 10] },   // Hero (minimal dark)
+  { sp: 0.25, rgb: [14, 14, 14] },  // Design
+  { sp: 0.45, rgb: [12, 12, 12] },  // Interior
+  { sp: 0.65, rgb: [8, 8, 8] },     // Engine
+  { sp: 0.80, rgb: [0, 0, 0] },     // Wheels (pure black abyss)
+  { sp: 1.0, rgb: [6, 6, 6] },      // Final CTA
 ];
 
 function getThemeBg(sp: number): string {
@@ -68,7 +68,7 @@ export default function App() {
     manualInspectionMode: false,
   });
 
-  // Smooth background color interpolation
+  // Background color interpolation loop without React re-render
   useEffect(() => {
     let animId: number;
     const updateBg = () => {
@@ -100,21 +100,23 @@ export default function App() {
   return (
     <div
       ref={containerRef}
-      className="relative min-h-screen text-white selection:bg-amber-400 selection:text-black transition-colors duration-150"
-      style={{ backgroundColor: 'rgb(16, 21, 32)' }}
+      className="relative min-h-screen text-white selection:bg-[#ccff00] selection:text-black transition-colors duration-150"
+      style={{ backgroundColor: 'rgb(10, 10, 10)' }}
     >
-      {/* Real-time GLB Asset Preloader */}
+      {/* Asset Preloader */}
       {!isLoaded && <Preloader onLoaded={() => setIsLoaded(true)} />}
 
-      {/* Fixed Full-screen 3D Canvas Layer behind page */}
-      <CanvasContainer
-        scrollProgressRef={scrollProgressRef}
-        controls={controls}
-        onPhaseChange={handlePhaseChange}
-        activePhase={activePhase}
-      />
+      {/* Lazy Loaded 3D Canvas */}
+      <Suspense fallback={null}>
+        <CanvasContainer
+          scrollProgressRef={scrollProgressRef}
+          controls={controls}
+          onPhaseChange={handlePhaseChange}
+          activePhase={activePhase}
+        />
+      </Suspense>
 
-      {/* Floating Glassmorphism Navbar */}
+      {/* Sticky Transparent Navbar */}
       <Navbar
         currentColor={currentColor}
         onColorSelect={handleColorSelect}
@@ -122,7 +124,7 @@ export default function App() {
         activePhase={activePhase}
       />
 
-      {/* High-Tech Automotive Telemetry HUD */}
+      {/* Performance HUD with Direct DOM Mutations */}
       <HUDOverlay
         scrollProgressRef={scrollProgressRef}
         activePhase={activePhase}
@@ -130,7 +132,7 @@ export default function App() {
         onUpdateControls={handleUpdateControls}
       />
 
-      {/* 6 HTML Story Sections scrolling above the 3D Canvas */}
+      {/* 6 HTML Story Sections */}
       <main className="relative z-10">
         <ScrollSections
           currentColor={currentColor}
@@ -139,7 +141,7 @@ export default function App() {
         />
       </main>
 
-      {/* VIP Custom Build / Reservation Modal */}
+      {/* VIP Custom Build Modal */}
       <ReservationModal
         isOpen={isReservationOpen}
         onClose={() => setIsReservationOpen(false)}
