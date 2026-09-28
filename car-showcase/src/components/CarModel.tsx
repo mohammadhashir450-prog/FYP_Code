@@ -5,10 +5,8 @@ import * as THREE from 'three';
 import { CAR_COLORS } from '../types';
 import type { CarColorOption } from '../types';
 
-// Preload the GLTF immediately
 useGLTF.preload('/models/land-cruiser.glb');
 
-// Interpolation utilities
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 const smoothstep = (min: number, max: number, value: number) => {
@@ -35,8 +33,8 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
   const { scene } = useGLTF('/models/land-cruiser.glb');
   const groupRef = useRef<THREE.Group>(null!);
   const currentPhaseRef = useRef<number>(0);
+  const { camera } = useThree();
 
-  // References to animated pivot groups
   const pivots = useRef<{
     doorFL: THREE.Group | null;
     doorFR: THREE.Group | null;
@@ -48,7 +46,6 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
     lightsFront: THREE.MeshStandardMaterial[];
     lightsBack: THREE.MeshStandardMaterial[];
     bodyMaterials: THREE.MeshStandardMaterial[];
-    engineGroup: THREE.Group | null;
   }>({
     doorFL: null,
     doorFR: null,
@@ -60,35 +57,29 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
     lightsFront: [],
     lightsBack: [],
     bodyMaterials: [],
-    engineGroup: null,
   });
 
-  const { camera } = useThree();
-
-  // ── Auto-scale and Auto-center with Box3 + Setup Pivot Hinge Hierarchies ──
   const initialized = useRef(false);
 
   useMemo(() => {
     if (initialized.current) return;
 
-    // 1. Compute original bounding box
+    // 1. Auto-center and normalize scale with Box3
     const box = new THREE.Box3().setFromObject(scene);
     const size = new THREE.Vector3();
     const center = new THREE.Vector3();
     box.getSize(size);
     box.getCenter(center);
 
-    // Normalize scale so longest edge fits 4.8 units
     const maxDim = Math.max(size.x, size.y, size.z);
     const targetScale = 4.8 / maxDim;
     scene.scale.setScalar(targetScale);
 
-    // Re-center around bottom contact
     scene.position.x = -center.x * targetScale;
-    scene.position.y = -box.min.y * targetScale; // place wheels at y = 0
+    scene.position.y = -box.min.y * targetScale; // wheels sit on ground
     scene.position.z = -center.z * targetScale;
 
-    // 2. Discover nodes & assign material enhancements
+    // 2. Discover nodes & collect meshes
     const p = pivots.current;
     const doorFL_Objects: THREE.Object3D[] = [];
     const doorFR_Objects: THREE.Object3D[] = [];
@@ -96,14 +87,12 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
     const doorBR_Objects: THREE.Object3D[] = [];
     const hood_Objects: THREE.Object3D[] = [];
     const trunk_Objects: THREE.Object3D[] = [];
-    const engine_Objects: THREE.Object3D[] = [];
     const wheelList: THREE.Object3D[] = [];
 
     scene.traverse((child) => {
       const name = child.name || '';
       const nameLower = name.toLowerCase();
 
-      // Check for Wheels (W1, W2, W3, W4 or Tyre)
       if (
         name.includes(':W1') ||
         name.includes(':W2') ||
@@ -112,21 +101,16 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
         nameLower.includes('wheel') ||
         nameLower.includes('sk_tyre')
       ) {
-        if (!wheelList.includes(child)) {
-          wheelList.push(child);
-        }
+        if (!wheelList.includes(child)) wheelList.push(child);
       }
 
-      // Check Doors
       if (name.includes('SK_Door_FL')) doorFL_Objects.push(child);
       else if (name.includes('SK_Door_FR')) doorFR_Objects.push(child);
       else if (name.includes('SK_Door_BL')) doorBL_Objects.push(child);
       else if (name.includes('SK_Door_BR')) doorBR_Objects.push(child);
       else if (name.includes('SK_Hood')) hood_Objects.push(child);
       else if (name.includes('SK_Trunk')) trunk_Objects.push(child);
-      else if (name.includes('SM_Engine')) engine_Objects.push(child);
 
-      // Enhance Mesh Materials
       const mesh = child as THREE.Mesh;
       if (mesh.isMesh && mesh.material) {
         mesh.castShadow = true;
@@ -138,12 +122,9 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
 
         mats.forEach((mat) => {
           if (!mat || !mat.isMeshStandardMaterial) return;
-
           mat.envMapIntensity = 2.4;
 
           const matName = (mat.name || '').toLowerCase();
-
-          // Body paint material
           if (
             matName.includes('1350010001_044') ||
             matName.includes('body') ||
@@ -151,47 +132,25 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
           ) {
             mat.roughness = 0.18;
             mat.metalness = 0.9;
-            if ('clearcoat' in mat) {
-              (mat as unknown as { clearcoat: number; clearcoatRoughness: number }).clearcoat = 1.0;
-              (mat as unknown as { clearcoat: number; clearcoatRoughness: number }).clearcoatRoughness = 0.05;
-            }
-            if (!p.bodyMaterials.includes(mat)) {
-              p.bodyMaterials.push(mat);
-            }
+            if (!p.bodyMaterials.includes(mat)) p.bodyMaterials.push(mat);
           }
 
-          // Glass & Windshield
           if (matName.includes('glass')) {
             mat.transparent = true;
             mat.opacity = 0.88;
             mat.roughness = 0.05;
             mat.metalness = 0.9;
-            mat.envMapIntensity = 3.0;
           }
 
-          // Chrome / Rims / Exhaust
           if (matName.includes('rim') || matName.includes('exhaust') || matName.includes('mirror')) {
-            mat.roughness = 0.1;
+            mat.roughness = 0.12;
             mat.metalness = 0.98;
-            mat.envMapIntensity = 3.5;
           }
 
-          // Headlights
-          if (
-            matName.includes('light_005') ||
-            name.includes('SM_Light_F') ||
-            matName.includes('light_f')
-          ) {
+          if (matName.includes('light_005') || name.includes('SM_Light_F')) {
             if (!p.lightsFront.includes(mat)) p.lightsFront.push(mat);
           }
-
-          // Taillights
-          if (
-            matName.includes('light_011') ||
-            matName.includes('light_015') ||
-            name.includes('SM_Light_B') ||
-            matName.includes('light_b')
-          ) {
+          if (matName.includes('light_011') || matName.includes('light_015') || name.includes('SM_Light_B')) {
             if (!p.lightsBack.includes(mat)) p.lightsBack.push(mat);
           }
         });
@@ -200,21 +159,14 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
 
     p.wheels = wheelList;
 
-    // Helper to wrap child nodes into a hinge pivot
-    const createPivotGroup = (
-      objects: THREE.Object3D[],
-      hingeOffset: THREE.Vector3
-    ): THREE.Group | null => {
+    const createPivotGroup = (objects: THREE.Object3D[], hingeOffset: THREE.Vector3): THREE.Group | null => {
       if (objects.length === 0) return null;
       const pivot = new THREE.Group();
       pivot.name = 'HingePivot';
       pivot.position.copy(hingeOffset);
-
-      // Parent pivot to scene
       scene.add(pivot);
 
       objects.forEach((obj) => {
-        // Only reparent direct children of root
         if (obj.parent === scene) {
           obj.position.sub(hingeOffset);
           pivot.add(obj);
@@ -223,7 +175,6 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
       return pivot;
     };
 
-    // Calculate approximate model space hinges
     p.doorFL = createPivotGroup(doorFL_Objects, new THREE.Vector3(0.95, 1.0, 0.9));
     p.doorFR = createPivotGroup(doorFR_Objects, new THREE.Vector3(-0.95, 1.0, 0.9));
     p.doorBL = createPivotGroup(doorBL_Objects, new THREE.Vector3(0.95, 1.0, -0.15));
@@ -234,7 +185,7 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
     initialized.current = true;
   }, [scene]);
 
-  // ── Update Paint Color in Realtime ──
+  // Update Paint Color
   useEffect(() => {
     const colorHex = new THREE.Color(controls.currentColor.hex);
     pivots.current.bodyMaterials.forEach((mat) => {
@@ -245,18 +196,17 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
     });
   }, [controls.currentColor]);
 
-  // ── Headlights and Taillights Emissive Glow ──
+  // Headlights & Taillights
   useEffect(() => {
     const p = pivots.current;
-    const frontGlow = controls.lightsOn ? new THREE.Color('#d4e8ff') : new THREE.Color('#000000');
-    const backGlow = controls.lightsOn ? new THREE.Color('#ff1a2a') : new THREE.Color('#000000');
+    const frontGlow = controls.lightsOn ? new THREE.Color('#d8ebff') : new THREE.Color('#000000');
+    const backGlow = controls.lightsOn ? new THREE.Color('#ff1828') : new THREE.Color('#000000');
 
     p.lightsFront.forEach((mat) => {
       mat.emissive.copy(frontGlow);
       mat.emissiveIntensity = controls.lightsOn ? 4.5 : 0;
       mat.needsUpdate = true;
     });
-
     p.lightsBack.forEach((mat) => {
       mat.emissive.copy(backGlow);
       mat.emissiveIntensity = controls.lightsOn ? 4.0 : 0;
@@ -264,20 +214,26 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
     });
   }, [controls.lightsOn]);
 
-  // ── Per-Frame Animation Choreography ──
+  // ── Per-Frame Choreography (6 Targeted Sections) ──
   useFrame(({ clock }) => {
     if (!groupRef.current) return;
     const p = pivots.current;
     const t = clock.getElapsedTime();
     const sp = scrollProgressRef.current; // 0.0 → 1.0
 
-    // Determine current phase for HUD
+    // Section 1: 0.00 → 0.16 (Hero)
+    // Section 2: 0.17 → 0.35 (Design)
+    // Section 3: 0.36 → 0.52 (Interior / Doors)
+    // Section 4: 0.53 → 0.70 (Engine / Top-down)
+    // Section 5: 0.71 → 0.86 (Wheels / Low)
+    // Section 6: 0.87 → 1.00 (Final CTA / Return to Hero)
+
     let currentPhase = 0;
-    if (sp < 0.16) currentPhase = 0;
+    if (sp < 0.17) currentPhase = 0;
     else if (sp < 0.36) currentPhase = 1;
-    else if (sp < 0.54) currentPhase = 2;
-    else if (sp < 0.72) currentPhase = 3;
-    else if (sp < 0.88) currentPhase = 4;
+    else if (sp < 0.53) currentPhase = 2;
+    else if (sp < 0.71) currentPhase = 3;
+    else if (sp < 0.87) currentPhase = 4;
     else currentPhase = 5;
 
     if (currentPhase !== currentPhaseRef.current) {
@@ -285,7 +241,6 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
       onPhaseChange?.(currentPhase);
     }
 
-    // If manual inspection mode is active (user interacted via HUD buttons), prioritize manual states
     if (controls.manualInspectionMode) {
       const doorAngle = controls.doorsOpen ? Math.PI / 2.3 : 0;
       const hoodAngle = controls.hoodOpen ? Math.PI / 3.4 : 0;
@@ -293,142 +248,189 @@ export default function CarModel({ scrollProgressRef, controls, onPhaseChange }:
 
       if (p.doorFL) p.doorFL.rotation.y = lerp(p.doorFL.rotation.y, doorAngle, 0.1);
       if (p.doorFR) p.doorFR.rotation.y = lerp(p.doorFR.rotation.y, -doorAngle, 0.1);
-      if (p.doorBL) p.doorBL.rotation.y = lerp(p.doorBL.rotation.y, doorAngle * 0.85, 0.1);
-      if (p.doorBR) p.doorBR.rotation.y = lerp(p.doorBR.rotation.y, -doorAngle * 0.85, 0.1);
       if (p.hood) p.hood.rotation.x = lerp(p.hood.rotation.x, -hoodAngle, 0.1);
       if (p.trunk) p.trunk.rotation.x = lerp(p.trunk.rotation.x, trunkAngle, 0.1);
-
-      // Slow idle orbit
-      groupRef.current.rotation.y = Math.PI * 0.25 + Math.sin(t * 0.2) * 0.1;
-      groupRef.current.position.set(0, -0.4, 0);
-      groupRef.current.scale.setScalar(1.0);
       return;
     }
 
-    // ── CHOREOGRAPHY TIMELINE (Scroll 0.00 → 1.00) ──
+    // ── Target Positions & Rotations ──
+    let carX = 0;
+    let carY = -0.4;
+    let carZ = 0;
+    let carRotY = 0.42; // Hero 3/4 front
+    let carRotX = 0;
+    let carScale = 1.0;
 
-    // 1. Transform: Position & Scale (Intro Float-in & Parallax)
-    let targetX = 0;
-    let targetY = 0;
-    let targetZ = 0;
-    let targetScale = 1.0;
-    let targetRotY = 0;
-    let targetRotX = 0;
-    let targetRotZ = 0;
+    let camX = 0;
+    let camY = 1.1;
+    let camZ = 5.2;
+    let lookX = 0.15;
+    let lookY = 0.5;
+    let lookZ = 0;
 
-    if (sp < 0.16) {
-      // Phase 0: Hero Entrance (Ascent from ground, heroic front-three-quarters)
-      const p0 = smoothstep(0, 0.15, sp);
-      targetY = lerp(-2.0, -0.4, p0);
-      targetScale = lerp(0.55, 1.0, p0);
-      targetRotY = lerp(-0.7, 0.35, p0);
-      targetRotX = lerp(0.12, 0.0, p0);
-      targetX = lerp(0.5, 0.3, p0);
+    let doorAngle = 0;
+    let hoodAngle = 0;
+    let wheelSpinRate = 1.5;
+
+    if (sp < 0.17) {
+      // ──────────────────────────────────────────────────────────
+      // 1. HERO: 3/4 front view, popping out, subtle floating idle
+      // ──────────────────────────────────────────────────────────
+      const s1 = smoothstep(0, 0.16, sp);
+      const idleFloat = Math.sin(t * 1.4) * 0.035;
+
+      carX = 0.35;
+      carY = -0.4 + idleFloat;
+      carZ = 0.35; // slightly forward for "popping" out feel
+      carRotY = 0.42 + Math.sin(t * 0.5) * 0.02; // subtle breathe
+      carRotX = 0.02;
+      carScale = 1.06;
+
+      camX = 0;
+      camY = 1.15;
+      camZ = 5.2;
+      lookX = 0.2;
+      lookY = 0.55;
+      lookZ = 0;
     } else if (sp < 0.36) {
-      // Phase 1: Sculpted Aerodynamics (Glides across, 180° rotation)
-      const p1 = smoothstep(0.16, 0.36, sp);
-      targetY = -0.4;
-      targetScale = 1.05;
-      targetRotY = lerp(0.35, Math.PI + 0.3, p1);
-      targetX = lerp(0.3, -0.6, p1);
-      targetZ = lerp(0, -0.4, p1);
-    } else if (sp < 0.54) {
-      // Phase 2: Executive Cabin & 4-Door Reveal (Side angle, doors open)
-      const p2 = smoothstep(0.36, 0.54, sp);
-      targetY = -0.4;
-      targetScale = 1.15;
-      targetRotY = lerp(Math.PI + 0.3, Math.PI * 1.55, p2);
-      targetX = lerp(-0.6, 0.45, p2);
-      targetRotX = 0.02;
-    } else if (sp < 0.72) {
-      // Phase 3: V6 Twin-Turbocharged Powertrain (Front view, hood opens)
-      const p3 = smoothstep(0.54, 0.72, sp);
-      targetY = -0.4;
-      targetScale = 1.2;
-      targetRotY = lerp(Math.PI * 1.55, Math.PI * 2.05, p3);
-      targetX = lerp(0.45, -0.35, p3);
-      targetRotX = -0.05; // tilt front down towards camera
-    } else if (sp < 0.88) {
-      // Phase 4: Command Tailgate & Luxury Utility (Rear 3/4 view, trunk lifts)
-      const p4 = smoothstep(0.72, 0.88, sp);
-      targetY = -0.4;
-      targetScale = 1.12;
-      targetRotY = lerp(Math.PI * 2.05, Math.PI * 2.85, p4);
-      targetX = lerp(-0.35, 0.4, p4);
-      targetRotX = 0.04;
+      // ──────────────────────────────────────────────────────────
+      // 2. DESIGN: Car rotates to side profile, text left, cards right
+      // ──────────────────────────────────────────────────────────
+      const s2 = smoothstep(0.17, 0.35, sp);
+      carX = lerp(0.35, 0.0, s2);
+      carY = -0.4;
+      carZ = lerp(0.35, -0.1, s2);
+      carRotY = lerp(0.42, Math.PI * 0.52, s2); // 90° pure side profile
+      carRotX = 0;
+      carScale = 1.08;
+
+      camX = lerp(0, -0.1, s2);
+      camY = lerp(1.15, 0.95, s2);
+      camZ = lerp(5.2, 4.9, s2);
+      lookX = 0;
+      lookY = 0.6;
+      lookZ = 0;
+    } else if (sp < 0.53) {
+      // ──────────────────────────────────────────────────────────
+      // 3. INTERIOR/DOORS: Front doors open, camera moves closer
+      // ──────────────────────────────────────────────────────────
+      const s3 = smoothstep(0.36, 0.52, sp);
+      
+      // Doors open smoothly to 65 degrees
+      const doorOpenCurve = Math.sin(s3 * Math.PI);
+      doorAngle = doorOpenCurve * (Math.PI / 2.6);
+
+      carX = 0.2;
+      carY = -0.4;
+      carZ = 0;
+      carRotY = lerp(Math.PI * 0.52, Math.PI * 0.40, s3); // angle slightly towards viewer
+      carScale = 1.12;
+
+      // Camera swoops close into the driver cabin
+      camX = lerp(-0.1, 1.35, s3);
+      camY = lerp(0.95, 0.98, s3);
+      camZ = lerp(4.9, 2.7, s3);
+      lookX = lerp(0, 0.3, s3);
+      lookY = lerp(0.6, 0.75, s3);
+      lookZ = lerp(0, 0.3, s3);
+    } else if (sp < 0.71) {
+      // ──────────────────────────────────────────────────────────
+      // 4. ENGINE/PERFORMANCE: Hood opens, camera TOP-DOWN on V6
+      // ──────────────────────────────────────────────────────────
+      const s4 = smoothstep(0.53, 0.70, sp);
+
+      // Hood lifts open
+      const hoodOpenCurve = Math.sin(s4 * Math.PI);
+      hoodAngle = hoodOpenCurve * (Math.PI / 3.4);
+
+      carX = 0;
+      carY = -0.4;
+      carZ = 0;
+      carRotY = lerp(Math.PI * 0.40, 0.05, s4); // Face camera directly
+      carRotX = lerp(0, 0.08, s4); // slight tilt
+      carScale = 1.15;
+
+      // Camera moves to high top-down perspective looking into engine bay
+      camX = lerp(1.35, 0.0, s4);
+      camY = lerp(0.98, 3.2, s4); // high top-down Y
+      camZ = lerp(2.7, 3.2, s4);  // looking downward
+      lookX = 0;
+      lookY = 0.6;
+      lookZ = 1.3; // focus directly on engine block (z ~ 1.3)
+    } else if (sp < 0.87) {
+      // ──────────────────────────────────────────────────────────
+      // 5. WHEELS/OFF-ROAD: Camera LOW on wheels, tyres spin fast
+      // ──────────────────────────────────────────────────────────
+      const s5 = smoothstep(0.71, 0.86, sp);
+
+      carX = lerp(0, 0.25, s5);
+      carY = lerp(-0.4, -0.45, s5); // squat low on suspension
+      carZ = 0;
+      carRotY = lerp(0.05, Math.PI * 0.35, s5);
+      carRotX = 0;
+      carScale = 1.18;
+
+      // Camera LOW angle close to the asphalt
+      camX = lerp(0, -1.8, s5);
+      camY = lerp(3.2, 0.28, s5); // just above ground
+      camZ = lerp(3.2, 2.3, s5);
+      lookX = -0.7;
+      lookY = 0.38;
+      lookZ = 1.2; // look at front-wheel hub
+
+      wheelSpinRate = 32.0; // intense burnout spin
     } else {
-      // Phase 5: High Velocity Dominance (Drop suspension, wheel burnout, launch)
-      const p5 = smoothstep(0.88, 1.0, sp);
-      targetY = lerp(-0.4, -0.46, p5); // squat down on suspension
-      targetScale = lerp(1.12, 1.02, p5);
-      targetRotY = lerp(Math.PI * 2.85, Math.PI * 3.3, p5);
-      targetX = lerp(0.4, 0.0, p5);
-      targetRotX = lerp(0.04, -0.02, p5);
+      // ──────────────────────────────────────────────────────────
+      // 6. FINAL CTA: Car returns to hero pose, ready for test drive
+      // ──────────────────────────────────────────────────────────
+      const s6 = smoothstep(0.87, 1.0, sp);
+
+      carX = lerp(0.25, 0.32, s6);
+      carY = -0.4 + Math.sin(t * 1.2) * 0.02;
+      carZ = lerp(0, 0.3, s6);
+      carRotY = lerp(Math.PI * 0.35, 0.42, s6); // returns to hero 3/4
+      carRotX = 0;
+      carScale = 1.05;
+
+      camX = lerp(-1.8, 0, s6);
+      camY = lerp(0.28, 1.15, s6);
+      camZ = lerp(2.3, 5.2, s6);
+      lookX = 0.18;
+      lookY = 0.55;
+      lookZ = 0;
+
+      wheelSpinRate = 1.0;
     }
 
-    // Smooth lerping for cinematic buttery feel
-    groupRef.current.position.x = lerp(groupRef.current.position.x, targetX, 0.08);
-    groupRef.current.position.y = lerp(groupRef.current.position.y, targetY + Math.sin(t * 0.8) * 0.02, 0.08);
-    groupRef.current.position.z = lerp(groupRef.current.position.z, targetZ, 0.08);
-    groupRef.current.rotation.y = lerp(groupRef.current.rotation.y, targetRotY, 0.08);
-    groupRef.current.rotation.x = lerp(groupRef.current.rotation.x, targetRotX, 0.08);
-    groupRef.current.rotation.z = lerp(groupRef.current.rotation.z, targetRotZ, 0.08);
+    // Apply smooth car transforms
+    groupRef.current.position.x = lerp(groupRef.current.position.x, carX, 0.08);
+    groupRef.current.position.y = lerp(groupRef.current.position.y, carY, 0.08);
+    groupRef.current.position.z = lerp(groupRef.current.position.z, carZ, 0.08);
+    groupRef.current.rotation.y = lerp(groupRef.current.rotation.y, carRotY, 0.08);
+    groupRef.current.rotation.x = lerp(groupRef.current.rotation.x, carRotX, 0.08);
 
-    const currentScale = groupRef.current.scale.x;
-    const smoothedScale = lerp(currentScale, targetScale, 0.08);
-    groupRef.current.scale.setScalar(smoothedScale);
+    const curScale = groupRef.current.scale.x;
+    groupRef.current.scale.setScalar(lerp(curScale, carScale, 0.08));
 
-    // ── DOORS ANIMATION (Phase 2: 0.38 → 0.52) ──
-    let doorProgress = 0;
-    if (sp >= 0.38 && sp <= 0.46) {
-      doorProgress = smoothstep(0.38, 0.44, sp); // open
-    } else if (sp > 0.46 && sp <= 0.52) {
-      doorProgress = 1 - smoothstep(0.46, 0.52, sp); // close
-    }
-    const doorAngle = doorProgress * (Math.PI / 2.3);
+    // Apply smooth camera transforms
+    camera.position.x = lerp(camera.position.x, camX, 0.08);
+    camera.position.y = lerp(camera.position.y, camY, 0.08);
+    camera.position.z = lerp(camera.position.z, camZ, 0.08);
+    camera.lookAt(lookX, lookY, lookZ);
 
+    // Apply door & hood rotations
     if (p.doorFL) p.doorFL.rotation.y = lerp(p.doorFL.rotation.y, doorAngle, 0.1);
     if (p.doorFR) p.doorFR.rotation.y = lerp(p.doorFR.rotation.y, -doorAngle, 0.1);
-    if (p.doorBL) p.doorBL.rotation.y = lerp(p.doorBL.rotation.y, doorAngle * 0.85, 0.1);
-    if (p.doorBR) p.doorBR.rotation.y = lerp(p.doorBR.rotation.y, -doorAngle * 0.85, 0.1);
-
-    // ── HOOD ANIMATION (Phase 3: 0.56 → 0.70) ──
-    let hoodProgress = 0;
-    if (sp >= 0.56 && sp <= 0.64) {
-      hoodProgress = smoothstep(0.56, 0.62, sp); // open
-    } else if (sp > 0.64 && sp <= 0.7) {
-      hoodProgress = 1 - smoothstep(0.64, 0.7, sp); // close
-    }
-    const hoodAngle = hoodProgress * (Math.PI / 3.4);
     if (p.hood) p.hood.rotation.x = lerp(p.hood.rotation.x, -hoodAngle, 0.1);
 
-    // ── TRUNK ANIMATION (Phase 4: 0.74 → 0.86) ──
-    let trunkProgress = 0;
-    if (sp >= 0.74 && sp <= 0.81) {
-      trunkProgress = smoothstep(0.74, 0.79, sp);
-    } else if (sp > 0.81 && sp <= 0.86) {
-      trunkProgress = 1 - smoothstep(0.81, 0.86, sp);
-    }
-    const trunkAngle = trunkProgress * (Math.PI / 2.5);
-    if (p.trunk) p.trunk.rotation.x = lerp(p.trunk.rotation.x, trunkAngle, 0.1);
-
-    // ── WHEEL SPIN ANIMATION (High speed spin in Phase 5 & gentle roll on scroll) ──
-    const isLaunchPhase = sp >= 0.88;
-    const spinMultiplier = isLaunchPhase ? 28 : lerp(2.0, 10.0, sp);
-    p.wheels.forEach((wheel) => {
-      wheel.rotation.x += 0.04 * spinMultiplier;
+    // Wheel spin
+    p.wheels.forEach((w) => {
+      w.rotation.x += 0.03 * wheelSpinRate;
     });
-
-    // ── Dynamic Camera LookAt and Floating Subtle Drift ──
-    camera.lookAt(
-      lerp(0, targetX * 0.5, 0.05),
-      lerp(0.8, targetY + 0.8, 0.05),
-      0
-    );
   });
 
   return (
-    <group ref={groupRef} position={[0, -2.0, 0]} scale={0.5}>
+    <group ref={groupRef} position={[0.35, -0.4, 0.35]} scale={1.05}>
       <primitive object={scene} />
     </group>
   );
