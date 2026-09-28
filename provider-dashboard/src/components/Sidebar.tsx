@@ -120,7 +120,7 @@ export default function Sidebar() {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  OBSIDIAN
+                  REPAIREASE
                 </div>
                 <div
                   style={{
@@ -131,7 +131,7 @@ export default function Sidebar() {
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  RESERVE · SOVEREIGN
+                  PROVIDER PORTAL · EXECUTIVE
                 </div>
               </div>
             )}
@@ -324,10 +324,10 @@ export default function Sidebar() {
             {!collapsed && (
               <div style={{ overflow: 'hidden' }}>
                 <div style={{ fontSize: '11px', fontWeight: 600, color: '#f3e5ab' }}>
-                  Consortium Custody Active
+                  RepairEase Network Active
                 </div>
                 <div style={{ fontSize: '9.5px', color: '#64748b' }}>
-                  Tier-1 Sovereign Reserve · PKR
+                  Tier-1 Verified Provider · PKR
                 </div>
               </div>
             )}

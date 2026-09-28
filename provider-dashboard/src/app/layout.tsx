@@ -4,11 +4,11 @@ import { ToastProvider } from '@/components/ToastProvider';
 import { AuthProvider } from '@/components/AuthProvider';
 
 export const metadata: Metadata = {
-  title: 'ProServe — Service Provider Dashboard',
-  description: 'Manage your service provider account, jobs, and customers in one place.',
-  keywords: 'service provider, dashboard, jobs, mechanics, handymen, professionals',
+  title: 'RepairEase — Service Provider Dashboard',
+  description: 'Manage your RepairEase service provider account, jobs, and customers in one place.',
+  keywords: 'RepairEase, service provider, dashboard, jobs, mechanics, handymen, professionals',
   openGraph: {
-    title: 'ProServe — Service Provider Dashboard',
+    title: 'RepairEase — Service Provider Dashboard',
     description: 'Professional service management platform',
     type: 'website',
   },

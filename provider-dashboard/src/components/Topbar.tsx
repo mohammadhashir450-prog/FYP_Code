@@ -110,7 +110,7 @@ export default function Topbar() {
               whiteSpace: 'nowrap',
             }}
           >
-            TIER-1 SOVEREIGN CLEARANCE ACTIVE
+            TIER-1 REPAIREASE CLEARANCE ACTIVE
           </span>
         </div>
 

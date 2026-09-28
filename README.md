@@ -1,4 +1,4 @@
-# FYP - ProServe Service Provider Dashboard
+# FYP - RepairEase Service Provider Dashboard
 
 A modern, responsive Service Provider Admin Dashboard built with **Next.js 16** (App Router), **React 19**, **Tailwind CSS**, and **TypeScript**.
 

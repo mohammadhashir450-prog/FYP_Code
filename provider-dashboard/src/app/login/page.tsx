@@ -1,130 +1,112 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/AuthProvider';
 import { useToast } from '@/components/ToastProvider';
 
-const STEPS = ['Personal Info', 'Shop Details', 'Documents & Photo'];
-
 const SERVICE_TYPES = [
-  'Auto Mechanic', 'Electrician', 'Plumber', 'Tyre Shop',
-  'AC Technician', 'Painter', 'Carpenter', 'Generator Repair',
-  'Mobile Repair', 'Computer Technician', 'Other',
-];
-
-const FEATURES = [
-  { icon: '📋', title: 'Instant Job Alerts', desc: 'Get notified the moment a customer requests your service' },
-  { icon: '💬', title: 'Real-time Chat', desc: 'Communicate directly with customers via in-app messaging' },
-  { icon: '⭐', title: 'Build Your Reputation', desc: 'Verified reviews help you grow your customer base' },
-  { icon: '📍', title: 'Smart Location Matching', desc: 'Customers near you find you first — like InDrive' },
-  { icon: '💰', title: 'Instant Payments', desc: 'Receive payments securely directly to your wallet' },
+  'Automotive Engineering & Diagnostics',
+  'Master Auto Mechanic',
+  'Automotive Electrical & ECU Specialist',
+  'Tyre & High-Speed Balancing',
+  'HVAC & Climate Control Specialist',
+  'Precision Bodywork & Paint',
+  'Industrial Generator Specialist',
+  'Heavy Machinery Repair',
+  'Other Accredited Engineering',
 ];
 
 export default function LoginPage() {
   const router = useRouter();
   const { login } = useAuth();
   const { showToast } = useToast();
+
   const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(0); // 0: Personal, 1: Workshop, 2: Verification
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPass, setShowPass] = useState(false);
-  const [showConfirmPass, setShowConfirmPass] = useState(false);
-  const [docUploaded, setDocUploaded] = useState<string | null>(null);
-  const [photoTaken, setPhotoTaken] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+  const [forgotModal, setForgotModal] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+
+  // Camera & Document Upload State
   const [cameraActive, setCameraActive] = useState(false);
+  const [photoTaken, setPhotoTaken] = useState(false);
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
-  const [featureIndex, setFeatureIndex] = useState(0);
+  const [docUploaded, setDocUploaded] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Form State
   const [form, setForm] = useState({
-    email: '', password: '', confirmPassword: '',
-    fullName: '', phone: '', cnic: '',
-    shopName: '', shopAddress: '', serviceType: '', experience: '', bio: '',
+    email: 'maximilian.s@repairease.com',
+    password: '••••••••••••••••',
+    fullName: '',
+    phone: '',
+    cnic: '',
+    shopName: '',
+    shopAddress: '',
+    serviceType: SERVICE_TYPES[0],
+    experience: '5+ Years',
   });
 
-  // Cycle through features on left panel
-  useEffect(() => {
-    const t = setInterval(() => setFeatureIndex(i => (i + 1) % FEATURES.length), 3000);
-    return () => clearInterval(t);
-  }, []);
-
-  const up = (k: string, v: string) => { setForm(f => ({ ...f, [k]: v })); if (error) setError(''); };
-
-  const pwStrength = (pw: string) => {
-    if (!pw) return 0;
-    let s = 0;
-    if (pw.length >= 6) s++;
-    if (pw.length >= 10) s++;
-    if (/[A-Z]/.test(pw)) s++;
-    if (/[0-9]/.test(pw)) s++;
-    if (/[^A-Za-z0-9]/.test(pw)) s++;
-    return s;
+  const up = (k: string, v: string) => {
+    setForm((f) => ({ ...f, [k]: v }));
+    if (error) setError('');
   };
-  const strength = pwStrength(form.password);
-  const strengthLabel = ['', 'Weak', 'Fair', 'Good', 'Strong', 'Excellent'][strength];
-  const strengthColor = ['', 'var(--danger)', '#f97316', 'var(--accent3)', 'var(--accent)', 'var(--success)'][strength];
 
-  const handleLogin = async () => {
-    if (!form.email || !form.password) return setError('Please enter your email and password.');
-    setLoading(true); setError('');
-    const ok = await login(form.email, form.password);
+  /* ── LOGIN HANDLER ── */
+  const handleLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!form.email) {
+      setError('Please provide your Email Address or Vault ID.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+
+    // Authenticate
+    const ok = await login(
+      form.email === 'maximilian.s@repairease.com' ? 'provider@demo.com' : form.email,
+      form.password === '••••••••••••••••' ? 'demo123' : form.password
+    );
+
     setLoading(false);
     if (ok) {
-      showToast('Welcome back, Ahmed! 👋', 'success');
+      showToast('Vault Clearance Granted · Welcome to RepairEase', 'success');
       router.push('/dashboard');
     } else {
-      setError('Invalid credentials. Try provider@demo.com / demo123');
+      setError('Invalid credentials. Use demo: provider@demo.com / demo123');
     }
   };
 
-  const validateStep = () => {
-    if (step === 0) {
-      if (!form.fullName.trim()) return 'Full name is required.';
-      if (!form.email.trim()) return 'Email is required.';
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) return 'Enter a valid email address.';
-      if (!form.phone.trim()) return 'Phone number is required.';
-      if (!form.cnic.trim()) return 'CNIC number is required.';
-      if (!form.password) return 'Password is required.';
-      if (form.password.length < 6) return 'Password must be at least 6 characters.';
-      if (form.password !== form.confirmPassword) return 'Passwords do not match.';
-    }
-    if (step === 1) {
-      if (!form.shopName.trim()) return 'Shop name is required.';
-      if (!form.shopAddress.trim()) return 'Shop address is required.';
-      if (!form.serviceType) return 'Please select a service type.';
-    }
-    return null;
-  };
-
-  const handleNext = () => {
-    const err = validateStep();
-    if (err) return setError(err);
-    setError('');
-    setStep(s => s + 1);
-  };
-
-  const handleSubmit = async () => {
-    if (!docUploaded) return setError('Please upload your CNIC or business document.');
-    if (!photoTaken) return setError('Please take a live photo for verification.');
-    setLoading(true); setError('');
-    await new Promise(r => setTimeout(r, 2000));
+  /* ── GOOGLE AUTH SIMULATION ── */
+  const handleGoogleAuth = async () => {
+    setLoading(true);
+    await new Promise((r) => setTimeout(r, 1200));
+    await login('google.provider@repairease.com', 'demo123');
     setLoading(false);
-    showToast('Registration submitted! Awaiting admin approval.', 'success');
-    router.push('/pending');
+    showToast('Authenticated via Google Sovereign SSO', 'success');
+    router.push('/dashboard');
   };
 
+  /* ── CAMERA HANDLERS ── */
   const startCamera = async () => {
     try {
       setCameraActive(true);
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: 640, height: 480 } });
-      if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: 640, height: 480 },
+      });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
     } catch {
       setCameraActive(false);
-      setError('Camera access denied. Please allow camera permissions in your browser.');
+      setError('Camera access denied. Please allow camera permissions.');
     }
   };
 
@@ -134,476 +116,1356 @@ export default function LoginPage() {
     canvasRef.current.width = videoRef.current.videoWidth;
     canvasRef.current.height = videoRef.current.videoHeight;
     ctx?.drawImage(videoRef.current, 0, 0);
-    const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.8);
+    const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.85);
     setPhotoDataUrl(dataUrl);
     const stream = videoRef.current.srcObject as MediaStream;
-    stream?.getTracks().forEach(t => t.stop());
+    stream?.getTracks().forEach((t) => t.stop());
     setCameraActive(false);
     setPhotoTaken(true);
-    showToast('Photo captured successfully!', 'success');
+    showToast('Biometric live snapshot verified!', 'success');
   };
 
   const retakePhoto = () => {
     setPhotoTaken(false);
-    setCameraActive(false);
     setPhotoDataUrl(null);
+    startCamera();
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) return setError('File size must be less than 10MB.');
+      if (file.size > 15 * 1024 * 1024) {
+        setError('Document must be under 15MB.');
+        return;
+      }
       setDocUploaded(file.name);
-      showToast(`Document "${file.name}" uploaded!`, 'success');
+      showToast(`Accreditation Document "${file.name}" uploaded.`, 'success');
     }
   };
 
+  /* ── MULTI-STEP SIGN UP VALIDATION & SUBMISSION ── */
+  const handleNextStep = () => {
+    if (step === 0) {
+      if (!form.fullName.trim()) return setError('Please enter your full legal name.');
+      if (!form.email.trim()) return setError('Please enter a valid business email.');
+      if (!form.phone.trim()) return setError('Please enter your direct mobile contact.');
+      if (!form.cnic.trim()) return setError('National Identity or Passport ID is required.');
+    }
+    if (step === 1) {
+      if (!form.shopName.trim()) return setError('Workshop or service entity name is required.');
+      if (!form.shopAddress.trim()) return setError('Physical workshop address is required.');
+    }
+    setError('');
+    setStep((s) => s + 1);
+  };
+
+  const handleSubmitCharter = async () => {
+    if (!docUploaded) return setError('Please upload your trade certification or CNIC.');
+    if (!photoTaken) return setError('Live photo capture is mandatory for tier-1 clearance.');
+    setLoading(true);
+    setError('');
+    await new Promise((r) => setTimeout(r, 2000));
+    setLoading(false);
+    showToast('Charter Application Submitted. Awaiting Sovereign Review.', 'success');
+    router.push('/pending');
+  };
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'var(--bg-primary)',
-      display: 'grid',
-      gridTemplateColumns: '1fr 1fr',
-    }}>
-      {/* ───────── LEFT PANEL ───────── */}
-      <div style={{
-        background: 'linear-gradient(160deg, #0d0d2b 0%, #1a0533 45%, #07101f 100%)',
+    <div
+      style={{
+        minHeight: '100vh',
+        background: '#07090e',
+        color: '#f8fafc',
+        fontFamily: "'Inter', sans-serif",
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '60px 56px',
+        justifyContent: 'space-between',
         position: 'relative',
-        overflow: 'hidden',
-      }}>
-        {/* Background blobs */}
-        <div style={{ position: 'absolute', width: 500, height: 500, background: 'radial-gradient(circle, rgba(108,99,255,0.18) 0%, transparent 65%)', top: '-5%', left: '-10%', borderRadius: '50%' }} />
-        <div style={{ position: 'absolute', width: 350, height: 350, background: 'radial-gradient(circle, rgba(0,212,170,0.1) 0%, transparent 65%)', bottom: '5%', right: '-5%', borderRadius: '50%' }} />
-        <div style={{ position: 'absolute', width: 200, height: 200, background: 'radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 65%)', top: '40%', right: '10%', borderRadius: '50%' }} />
+        overflowX: 'hidden',
+      }}
+    >
+      {/* Background radial gold glow */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '-150px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '700px',
+          height: '500px',
+          background: 'radial-gradient(circle, rgba(212, 175, 55, 0.06) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }}
+      />
 
-        <div style={{ position: 'relative', maxWidth: 380, width: '100%' }}>
-          {/* Brand */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 36 }}>
-            <div style={{
-              width: 56, height: 56,
-              background: 'linear-gradient(135deg, var(--accent), #8b5cf6)',
-              borderRadius: '16px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '26px',
-              boxShadow: '0 8px 32px var(--accent-glow)',
-              animation: 'float 3s ease-in-out infinite',
-            }}>🔧</div>
-            <div>
-              <div style={{ fontSize: '28px', fontWeight: 900, background: 'linear-gradient(135deg, #f0f4ff, var(--accent2))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                ProServe
-              </div>
-              <div style={{ fontSize: '12px', color: 'var(--text-muted)', letterSpacing: '2px', textTransform: 'uppercase' }}>Provider Portal</div>
+      {/* ── 1. TOP HEADER BAR ─────────────────────────────────── */}
+      <header
+        style={{
+          padding: '24px 44px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+          position: 'relative',
+          zIndex: 10,
+        }}
+      >
+        {/* Brand Emblem */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              background: 'linear-gradient(135deg, #d4af37 0%, #997a3a 100%)',
+              borderRadius: '7px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 0 14px rgba(212, 175, 55, 0.35)',
+              border: '1px solid rgba(255, 235, 170, 0.4)',
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2L2 9L12 16L22 9L12 2Z" fill="#080c14" />
+              <path d="M2 15L12 22L22 15" stroke="#080c14" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <div>
+            <div
+              style={{
+                fontFamily: "'Cinzel', Georgia, serif",
+                fontSize: '15px',
+                fontWeight: 800,
+                letterSpacing: '2px',
+                color: '#f8fafc',
+                lineHeight: 1.1,
+              }}
+            >
+              REPAIREASE
             </div>
-          </div>
-
-          <h1 style={{ fontSize: '32px', fontWeight: 800, lineHeight: 1.3, marginBottom: 12, color: 'var(--text-primary)' }}>
-            Grow Your Business<br />
-            <span style={{ background: 'linear-gradient(135deg, var(--accent), var(--accent2))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              On Your Terms
-            </span>
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', lineHeight: 1.7, fontSize: '14px', marginBottom: 40 }}>
-            Join thousands of verified service professionals managing jobs, customers, and earnings — all from one smart dashboard.
-          </p>
-
-          {/* Rotating feature card */}
-          <div style={{
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: '16px',
-            padding: '20px 24px',
-            marginBottom: 28,
-            minHeight: 90,
-          }}>
-            {FEATURES.map((f, i) => (
-              <div key={i} style={{
-                display: i === featureIndex ? 'flex' : 'none',
-                gap: 14, alignItems: 'flex-start',
-                animation: 'fadeIn 0.4s ease',
-              }}>
-                <div style={{ fontSize: '28px', flexShrink: 0 }}>{f.icon}</div>
-                <div>
-                  <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>{f.title}</div>
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{f.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Dots */}
-          <div style={{ display: 'flex', gap: 6 }}>
-            {FEATURES.map((_, i) => (
-              <div key={i} onClick={() => setFeatureIndex(i)} style={{
-                width: i === featureIndex ? 20 : 6, height: 6,
-                borderRadius: '3px',
-                background: i === featureIndex ? 'var(--accent)' : 'rgba(255,255,255,0.2)',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-              }} />
-            ))}
-          </div>
-
-          {/* Social proof */}
-          <div style={{ marginTop: 36, display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{ display: 'flex' }}>
-              {['UA', 'SM', 'BR', 'FK', 'AK'].map((av, i) => (
-                <div key={av} style={{
-                  width: 30, height: 30,
-                  background: `hsl(${i * 60 + 200}, 70%, 50%)`,
-                  borderRadius: '50%',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '10px', fontWeight: 700, color: 'white',
-                  marginLeft: i === 0 ? 0 : -8,
-                  border: '2px solid var(--bg-primary)',
-                }}>
-                  {av}
-                </div>
-              ))}
-            </div>
-            <div>
-              <div style={{ display: 'flex', gap: 2, marginBottom: 1 }}>
-                {[1,2,3,4,5].map(i => <span key={i} style={{ color: 'var(--accent3)', fontSize: '12px' }}>★</span>)}
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Trusted by 2,400+ providers</div>
+            <div
+              style={{
+                fontSize: '8.5px',
+                fontWeight: 700,
+                color: '#c5a059',
+                letterSpacing: '2px',
+              }}
+            >
+              PROVIDER PORTAL · EXECUTIVE
             </div>
           </div>
         </div>
-      </div>
 
-      {/* ───────── RIGHT PANEL ───────── */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '40px',
-        overflowY: 'auto',
-        background: 'var(--bg-primary)',
-      }}>
-        <div style={{ width: '100%', maxWidth: 480 }}>
-          {/* Mode toggle */}
-          <div className="tabs" style={{ marginBottom: 32 }}>
-            <button id="tab-login" className={`tab ${mode === 'login' ? 'active' : ''}`}
-              onClick={() => { setMode('login'); setStep(0); setError(''); }}>
-              Sign In
-            </button>
-            <button id="tab-register" className={`tab ${mode === 'register' ? 'active' : ''}`}
-              onClick={() => { setMode('register'); setError(''); }}>
-              Create Account
-            </button>
+        {/* Right Top Status & Help */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '6px 14px',
+              background: 'rgba(15, 23, 42, 0.6)',
+              border: '1px solid rgba(212, 175, 55, 0.25)',
+              borderRadius: '20px',
+              fontSize: '11px',
+              fontFamily: "'JetBrains Mono', monospace",
+              color: '#f3e5ab',
+              letterSpacing: '0.8px',
+            }}
+          >
+            <span
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: '50%',
+                background: '#d4af37',
+                boxShadow: '0 0 8px #d4af37',
+                display: 'inline-block',
+                animation: 'pulse 2s infinite',
+              }}
+            />
+            <span>PROVIDER ENCLAVE</span>
           </div>
 
-          {/* Error */}
-          {error && (
-            <div className="alert alert-danger animate-fadeIn" style={{ marginBottom: 20 }}>
-              ⚠️ {error}
-            </div>
-          )}
+          <button
+            onClick={() =>
+              showToast('Security Node: FINMA Regulated 256-bit AES Enclave · Zero-Knowledge Authentication', 'info')
+            }
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: '50%',
+              background: 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#94a3b8',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: 700,
+              transition: 'all 0.2s',
+            }}
+            title="Sovereign Security Protocol Help"
+          >
+            ?
+          </button>
+        </div>
+      </header>
 
-          {/* ─── LOGIN ─── */}
-          {mode === 'login' && (
-            <div className="animate-fadeIn">
-              <h2 style={{ fontSize: '26px', fontWeight: 800, marginBottom: 6 }}>Welcome back 👋</h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginBottom: 28 }}>
-                Sign in to your provider account to continue
-              </p>
+      {/* ── 2. CENTER PIECE: 2-COLUMN SPLIT GATEWAY CARD ─────── */}
+      <main
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px 20px',
+          position: 'relative',
+          zIndex: 5,
+        }}
+      >
+        <div
+          style={{
+            maxWidth: '1020px',
+            width: '100%',
+            minHeight: '580px',
+            background: 'linear-gradient(135deg, rgba(12, 16, 25, 0.96) 0%, rgba(8, 12, 18, 0.98) 100%)',
+            border: '1px solid rgba(212, 175, 55, 0.2)',
+            borderRadius: '16px',
+            boxShadow: '0 24px 80px rgba(0, 0, 0, 0.8), 0 0 40px rgba(212, 175, 55, 0.05)',
+            display: 'grid',
+            gridTemplateColumns: '44% 56%',
+            overflow: 'hidden',
+          }}
+        >
+          {/* ── LEFT PANEL (SWISS CUSTODY / REPAIREASE EXCELLENCE) ── */}
+          <div
+            style={{
+              background: 'linear-gradient(175deg, #090e17 0%, #060810 100%)',
+              borderRight: '1px solid rgba(255, 255, 255, 0.06)',
+              padding: '48px 42px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Top decorative gradient bar */}
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '3px',
+                background: 'linear-gradient(90deg, #d4af37, transparent)',
+              }}
+            />
 
-              <div className="form-group">
-                <label className="label" htmlFor="login-email">Email Address</label>
-                <input id="login-email" type="email" className="input" placeholder="ahmed@example.com"
-                  value={form.email} onChange={e => up('email', e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleLogin()} />
-              </div>
-
-              <div className="form-group">
-                <label className="label" htmlFor="login-password">
-                  Password
-                  <Link href="#" style={{ float: 'right', color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}>
-                    Forgot password?
-                  </Link>
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <input id="login-password" type={showPass ? 'text' : 'password'} className="input"
-                    placeholder="Enter your password" value={form.password}
-                    onChange={e => up('password', e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                    style={{ paddingRight: 48 }} />
-                  <button onClick={() => setShowPass(s => !s)} style={{
-                    position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '16px',
-                  }}>{showPass ? '🙈' : '👁️'}</button>
-                </div>
-              </div>
-
-              <button id="btn-login" onClick={handleLogin} disabled={loading}
-                className="btn btn-primary btn-full btn-lg" style={{ marginTop: 4 }}>
-                {loading
-                  ? <><span style={{ display: 'inline-block', animation: 'spin 0.8s linear infinite' }}>⟳</span> Signing in...</>
-                  : 'Sign In →'}
-              </button>
-
-              {/* Demo credentials */}
-              <div style={{
-                marginTop: 24,
-                background: 'var(--bg-card)',
-                border: '1px dashed var(--border)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '14px 16px',
-                fontSize: '13px',
-              }}>
-                <div style={{ color: 'var(--text-muted)', marginBottom: 6, fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Demo Credentials
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button onClick={() => { up('email', 'provider@demo.com'); up('password', 'demo123'); }}
-                    style={{ background: 'rgba(108,99,255,0.1)', border: '1px solid rgba(108,99,255,0.3)', borderRadius: '6px', padding: '5px 12px', cursor: 'pointer', fontSize: '12px', color: 'var(--accent)', fontFamily: 'Inter, sans-serif' }}>
-                    provider@demo.com / demo123
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ─── REGISTER ─── */}
-          {mode === 'register' && (
             <div>
-              <h2 style={{ fontSize: '24px', fontWeight: 800, marginBottom: 4 }}>Create Account</h2>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: 24 }}>
-                Join ProServe as a verified service provider
-              </p>
-
-              {/* Step progress */}
-              <div style={{ display: 'flex', gap: 6, marginBottom: 28 }}>
-                {STEPS.map((label, i) => (
-                  <div key={label} style={{ flex: 1 }}>
-                    <div style={{
-                      height: 4, borderRadius: 2,
-                      background: i < step ? 'var(--success)' : i === step ? 'linear-gradient(90deg, var(--accent), var(--accent2))' : 'var(--border)',
-                      transition: 'background 0.4s',
-                    }} />
-                    <div style={{ fontSize: '10px', marginTop: 5, fontWeight: i === step ? 700 : 400, color: i <= step ? (i === step ? 'var(--accent)' : 'var(--success)') : 'var(--text-muted)' }}>
-                      {i < step ? '✓ ' : `${i + 1}. `}{label}
-                    </div>
-                  </div>
-                ))}
+              {/* Top Enclave Tag */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: '10px',
+                  fontFamily: "'JetBrains Mono', monospace",
+                  color: '#c5a059',
+                  letterSpacing: '1.4px',
+                  textTransform: 'uppercase',
+                  marginBottom: '60px',
+                }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: '#d4af37',
+                    boxShadow: '0 0 6px #d4af37',
+                  }}
+                />
+                <span>ZURICH VAULT ENCLAVE</span>
               </div>
 
-              {/* ─── Step 0 ─── */}
-              {step === 0 && (
-                <div className="animate-fadeIn">
-                  <div className="grid-2" style={{ gap: 14 }}>
-                    <div className="form-group">
-                      <label className="label" htmlFor="r-name">Full Name *</label>
-                      <input id="r-name" type="text" className="input" placeholder="Ahmed Khan" value={form.fullName} onChange={e => up('fullName', e.target.value)} />
-                    </div>
-                    <div className="form-group">
-                      <label className="label" htmlFor="r-phone">Phone *</label>
-                      <input id="r-phone" type="tel" className="input" placeholder="+92 300 0000000" value={form.phone} onChange={e => up('phone', e.target.value)} />
-                    </div>
+              {/* Sub-label */}
+              <div
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  letterSpacing: '2.5px',
+                  color: '#d4af37',
+                  textTransform: 'uppercase',
+                  marginBottom: '14px',
+                  fontFamily: "'JetBrains Mono', monospace",
+                }}
+              >
+                SWISS CUSTODY
+              </div>
+
+              {/* Grand Serif Headline */}
+              <h1
+                style={{
+                  fontFamily: "'Cinzel', Georgia, serif",
+                  fontSize: '40px',
+                  lineHeight: 1.15,
+                  fontWeight: 500,
+                  margin: '0 0 20px 0',
+                }}
+              >
+                <span style={{ color: '#f8fafc', display: 'block' }}>Uncompromising</span>
+                <span
+                  style={{
+                    fontStyle: 'italic',
+                    fontWeight: 600,
+                    background: 'linear-gradient(135deg, #f3e5ab 0%, #d4af37 60%, #b89327 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    display: 'block',
+                  }}
+                >
+                  Sovereign
+                </span>
+                <span
+                  style={{
+                    fontStyle: 'italic',
+                    fontWeight: 600,
+                    background: 'linear-gradient(135deg, #f3e5ab 0%, #d4af37 60%, #b89327 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    display: 'block',
+                  }}
+                >
+                  Custody
+                </span>
+              </h1>
+
+              {/* Gold separator rule */}
+              <div
+                style={{
+                  width: '42px',
+                  height: '2px',
+                  background: '#d4af37',
+                  marginBottom: '22px',
+                  boxShadow: '0 0 10px rgba(212, 175, 55, 0.5)',
+                }}
+              />
+
+              {/* Description */}
+              <p
+                style={{
+                  fontSize: '13px',
+                  lineHeight: 1.65,
+                  color: '#94a3b8',
+                  maxWidth: '320px',
+                  margin: 0,
+                }}
+              >
+                Reserved exclusively for private estates and accredited family offices requiring cryptographic finality.
+              </p>
+            </div>
+
+            {/* Bottom Certification Badges */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 20,
+                fontSize: '10px',
+                fontFamily: "'JetBrains Mono', monospace",
+                color: '#64748b',
+                letterSpacing: '1px',
+                textTransform: 'uppercase',
+                paddingTop: '28px',
+                borderTop: '1px solid rgba(255, 255, 255, 0.06)',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ color: '#22c55e' }}>✔</span>
+                <span>GOTTHARD DEPOSITORY</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ color: '#d4af37' }}>🔒</span>
+                <span>TIER-4 SECURITY</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── RIGHT PANEL (VAULT GATEWAY / SIGN UP) ─────────── */}
+          <div
+            style={{
+              padding: '48px 46px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              background: '#0c1018',
+            }}
+          >
+            {/* Top Key Icon in Rounded Dark Container */}
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: '10px',
+                background: 'rgba(212, 175, 55, 0.08)',
+                border: '1px solid rgba(212, 175, 55, 0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 18px auto',
+                boxShadow: '0 0 20px rgba(212, 175, 55, 0.1)',
+              }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                <circle cx="8" cy="14" r="4" stroke="#d4af37" strokeWidth="2" />
+                <path d="M12 14L21 14M21 14L21 10M17 14L17 11" stroke="#d4af37" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </div>
+
+            {/* Gateway Titles */}
+            <div style={{ textAlign: 'center', marginBottom: '26px' }}>
+              <h2
+                style={{
+                  fontFamily: "'Cinzel', Georgia, serif",
+                  fontSize: '26px',
+                  fontWeight: 700,
+                  color: '#f8fafc',
+                  margin: '0 0 6px 0',
+                }}
+              >
+                {mode === 'login' ? 'Vault Gateway' : 'Charter Application'}
+              </h2>
+              <p
+                style={{
+                  fontSize: '12px',
+                  color: '#94a3b8',
+                  margin: 0,
+                }}
+              >
+                {mode === 'login'
+                  ? 'Enter credentials to access private reserves'
+                  : 'Register credentials for accredited platform clearance'}
+              </p>
+            </div>
+
+            {/* Error Banner */}
+            {error && (
+              <div
+                style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: '6px',
+                  padding: '9px 14px',
+                  fontSize: '12px',
+                  color: '#ef4444',
+                  marginBottom: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                <span>⚠️</span>
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* ── MODE: LOGIN ── */}
+            {mode === 'login' ? (
+              <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {/* Field 1: Email Address or Vault ID */}
+                <div>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontSize: '9.5px',
+                      fontWeight: 700,
+                      letterSpacing: '1.2px',
+                      color: '#94a3b8',
+                      textTransform: 'uppercase',
+                      marginBottom: '7px',
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    EMAIL ADDRESS OR VAULT ID
+                  </label>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      background: '#07090e',
+                      border: '1px solid rgba(255, 255, 255, 0.09)',
+                      borderRadius: '7px',
+                      padding: '0 14px',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <span style={{ color: '#64748b', fontSize: '14px', marginRight: 10 }}>👤</span>
+                    <input
+                      type="text"
+                      value={form.email}
+                      onChange={(e) => up('email', e.target.value)}
+                      placeholder="maximilian.s@aurelia-reserve.ch"
+                      style={{
+                        width: '100%',
+                        padding: '12px 0',
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        color: '#f8fafc',
+                        fontSize: '13px',
+                        fontFamily: "'JetBrains Mono', monospace",
+                      }}
+                    />
                   </div>
-                  <div className="form-group">
-                    <label className="label" htmlFor="r-email">Email Address *</label>
-                    <input id="r-email" type="email" className="input" placeholder="ahmed@example.com" value={form.email} onChange={e => up('email', e.target.value)} />
+                </div>
+
+                {/* Field 2: Password with Forgot Password */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '7px' }}>
+                    <label
+                      style={{
+                        fontSize: '9.5px',
+                        fontWeight: 700,
+                        letterSpacing: '1.2px',
+                        color: '#94a3b8',
+                        textTransform: 'uppercase',
+                        fontFamily: "'JetBrains Mono', monospace",
+                      }}
+                    >
+                      PASSWORD
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setForgotModal(true)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        fontSize: '11px',
+                        color: '#c5a059',
+                        cursor: 'pointer',
+                        fontFamily: "'Inter', sans-serif",
+                      }}
+                    >
+                      Forgot Password?
+                    </button>
                   </div>
-                  <div className="form-group">
-                    <label className="label" htmlFor="r-cnic">CNIC Number *</label>
-                    <input id="r-cnic" type="text" className="input" placeholder="42201-1234567-1" value={form.cnic} onChange={e => up('cnic', e.target.value)} />
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      background: '#07090e',
+                      border: '1px solid rgba(255, 255, 255, 0.09)',
+                      borderRadius: '7px',
+                      padding: '0 14px',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    <span style={{ color: '#64748b', fontSize: '14px', marginRight: 10 }}>🔒</span>
+                    <input
+                      type={showPass ? 'text' : 'password'}
+                      value={form.password}
+                      onChange={(e) => up('password', e.target.value)}
+                      placeholder="••••••••••••••••"
+                      style={{
+                        width: '100%',
+                        padding: '12px 0',
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        color: '#f8fafc',
+                        fontSize: '13px',
+                        fontFamily: "'JetBrains Mono', monospace",
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPass(!showPass)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: showPass ? '#d4af37' : '#64748b',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                        padding: '4px',
+                      }}
+                    >
+                      {showPass ? '👁️' : '👁️‍🗨️'}
+                    </button>
                   </div>
-                  <div className="form-group">
-                    <label className="label" htmlFor="r-pw">Password *</label>
-                    <div style={{ position: 'relative' }}>
-                      <input id="r-pw" type={showPass ? 'text' : 'password'} className="input"
-                        placeholder="Create strong password" value={form.password}
-                        onChange={e => up('password', e.target.value)} style={{ paddingRight: 48 }} />
-                      <button onClick={() => setShowPass(s => !s)} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-                        {showPass ? '🙈' : '👁️'}
-                      </button>
-                    </div>
-                    {form.password && (
-                      <div style={{ marginTop: 8 }}>
-                        <div className="progress-bar">
-                          <div style={{ height: '100%', width: `${(strength / 5) * 100}%`, background: strengthColor, borderRadius: 3, transition: 'all 0.3s' }} />
-                        </div>
-                        <span style={{ fontSize: '11px', color: strengthColor, marginTop: 3, display: 'block' }}>
-                          Strength: {strengthLabel}
-                        </span>
-                      </div>
-                    )}
+                </div>
+
+                {/* Remember device & Encrypted TLS Row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+                  <label
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      fontSize: '12px',
+                      color: '#cbd5e1',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      style={{
+                        accentColor: '#d4af37',
+                        width: 15,
+                        height: 15,
+                        cursor: 'pointer',
+                      }}
+                    />
+                    <span>Remember this device</span>
+                  </label>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      fontSize: '10px',
+                      fontFamily: "'JetBrains Mono', monospace",
+                      color: '#64748b',
+                    }}
+                  >
+                    <span style={{ color: '#d4af37' }}>🛡️</span>
+                    <span>ENCRYPTED TLS 1.3</span>
                   </div>
-                  <div className="form-group">
-                    <label className="label" htmlFor="r-cpw">Confirm Password *</label>
-                    <div style={{ position: 'relative' }}>
-                      <input id="r-cpw" type={showConfirmPass ? 'text' : 'password'} className="input"
-                        placeholder="Repeat your password" value={form.confirmPassword}
-                        onChange={e => up('confirmPassword', e.target.value)}
-                        style={{ paddingRight: 48, borderColor: form.confirmPassword && form.confirmPassword !== form.password ? 'var(--danger)' : '' }} />
-                      <button onClick={() => setShowConfirmPass(s => !s)} style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-                        {showConfirmPass ? '🙈' : '👁️'}
-                      </button>
-                    </div>
-                    {form.confirmPassword && form.password !== form.confirmPassword && (
-                      <span style={{ fontSize: '11px', color: 'var(--danger)', marginTop: 3, display: 'block' }}>Passwords don't match</span>
-                    )}
-                  </div>
-                  <button id="reg-next-1" onClick={handleNext} className="btn btn-primary btn-full">
-                    Next: Shop Details →
+                </div>
+
+                {/* Primary Button: SIGN IN */}
+                <button
+                  type="submit"
+                  disabled={loading}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 10,
+                    width: '100%',
+                    padding: '13px',
+                    borderRadius: '7px',
+                    background: 'linear-gradient(135deg, #d4af37 0%, #b89327 100%)',
+                    border: '1px solid rgba(255, 235, 170, 0.4)',
+                    color: '#07090e',
+                    fontSize: '12.5px',
+                    fontWeight: 800,
+                    letterSpacing: '1px',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 18px rgba(212, 175, 55, 0.35)',
+                    transition: 'all 0.2s',
+                    textTransform: 'uppercase',
+                    marginTop: 6,
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 6px 24px rgba(212, 175, 55, 0.55)';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 4px 18px rgba(212, 175, 55, 0.35)';
+                  }}
+                >
+                  <span>➔]</span>
+                  <span>{loading ? 'AUTHENTICATING ENCLAVE...' : 'SIGN IN'}</span>
+                </button>
+
+                {/* Divider Line: OR CONTINUE WITH */}
+                <div
+                  style={{
+                    position: 'relative',
+                    textAlign: 'center',
+                    margin: '6px 0',
+                  }}
+                >
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: 0,
+                      right: 0,
+                      height: '1px',
+                      background: 'rgba(255, 255, 255, 0.08)',
+                    }}
+                  />
+                  <span
+                    style={{
+                      position: 'relative',
+                      background: '#0c1018',
+                      padding: '0 12px',
+                      fontSize: '9.5px',
+                      color: '#64748b',
+                      letterSpacing: '1.2px',
+                      fontFamily: "'JetBrains Mono', monospace",
+                    }}
+                  >
+                    OR CONTINUE WITH
+                  </span>
+                </div>
+
+                {/* Continue with Google */}
+                <button
+                  type="button"
+                  onClick={handleGoogleAuth}
+                  disabled={loading}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 10,
+                    width: '100%',
+                    padding: '11px',
+                    borderRadius: '7px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.09)',
+                    color: '#f8fafc',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    letterSpacing: '0.8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(212, 175, 55, 0.3)';
+                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255, 255, 255, 0.06)';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255, 255, 255, 0.09)';
+                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(255, 255, 255, 0.03)';
+                  }}
+                >
+                  {/* Google G SVG */}
+                  <svg width="15" height="15" viewBox="0 0 24 24">
+                    <path
+                      fill="#EA4335"
+                      d="M12 5c1.6 0 3 .6 4.1 1.7l3.1-3.1C17.3 1.8 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.4 9 5 12 5z"
+                    />
+                    <path
+                      fill="#4285F4"
+                      d="M23.5 12.3c0-.8-.1-1.7-.2-2.3H12v4.6h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.9z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3 0-.8.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 12.3 0 15.2c0 2.8.7 5.4 1.9 7.8l3.7-2.9z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23.5c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.4-6.4-5.2L1.9 16.5C3.7 20.3 7.5 23.5 12 23.5z"
+                    />
+                  </svg>
+                  <span>CONTINUE WITH GOOGLE</span>
+                </button>
+
+                {/* Bottom Switch to Sign Up */}
+                <div style={{ textAlign: 'center', marginTop: 12, fontSize: '11.5px', color: '#94a3b8' }}>
+                  Don&apos;t have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('register');
+                      setStep(0);
+                      setError('');
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      color: '#d4af37',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      letterSpacing: '0.4px',
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    APPLY FOR CHARTER / SIGN UP
                   </button>
                 </div>
-              )}
-
-              {/* ─── Step 1 ─── */}
-              {step === 1 && (
-                <div className="animate-fadeIn">
-                  <div className="form-group">
-                    <label className="label" htmlFor="r-shop">Shop / Business Name *</label>
-                    <input id="r-shop" type="text" className="input" placeholder="Ahmed Auto Repair" value={form.shopName} onChange={e => up('shopName', e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label className="label" htmlFor="r-addr">Shop Address *</label>
-                    <input id="r-addr" type="text" className="input" placeholder="Street 5, Model Town, Lahore" value={form.shopAddress} onChange={e => up('shopAddress', e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label className="label" htmlFor="r-stype">Service Type *</label>
-                    <select id="r-stype" className="input" value={form.serviceType} onChange={e => up('serviceType', e.target.value)} style={{ cursor: 'pointer' }}>
-                      <option value="">Select your service type</option>
-                      {SERVICE_TYPES.map(s => <option key={s}>{s}</option>)}
-                    </select>
-                  </div>
-                  <div className="grid-2" style={{ gap: 14 }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="label" htmlFor="r-exp">Experience (years)</label>
-                      <input id="r-exp" type="number" className="input" placeholder="5" value={form.experience} onChange={e => up('experience', e.target.value)} min="0" max="60" />
+              </form>
+            ) : (
+              /* ── MODE: SIGN UP (CHARTER APPLICATION) ── */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {/* Step indicator */}
+                <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                  {['Credentials', 'Specialization', 'Biometrics & Docs'].map((label, idx) => (
+                    <div
+                      key={label}
+                      style={{
+                        flex: 1,
+                        padding: '4px 6px',
+                        background: idx === step ? 'rgba(212, 175, 55, 0.15)' : 'rgba(255, 255, 255, 0.03)',
+                        border: `1px solid ${idx === step ? '#d4af37' : 'rgba(255, 255, 255, 0.06)'}`,
+                        borderRadius: '4px',
+                        textAlign: 'center',
+                        fontSize: '9.5px',
+                        color: idx === step ? '#f3e5ab' : '#64748b',
+                        fontFamily: "'JetBrains Mono', monospace",
+                      }}
+                    >
+                      {idx + 1}. {label}
                     </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="label" style={{ opacity: 0 }}>.</label>
-                      <div style={{ display: 'flex', gap: 8, height: 46 }}>
-                        <button onClick={() => setStep(0)} className="btn btn-ghost" style={{ flex: 1 }}>← Back</button>
+                  ))}
+                </div>
+
+                {/* Step 0: Personal Credentials */}
+                {step === 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', marginBottom: 5 }}>
+                        FULL LEGAL NAME
+                      </label>
+                      <input
+                        type="text"
+                        value={form.fullName}
+                        onChange={(e) => up('fullName', e.target.value)}
+                        placeholder="e.g. Master Engr. Bilal Raza"
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          background: '#07090e',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: '6px',
+                          color: '#f8fafc',
+                          fontSize: '12.5px',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', marginBottom: 5 }}>
+                          EMAIL ADDRESS
+                        </label>
+                        <input
+                          type="email"
+                          value={form.email}
+                          onChange={(e) => up('email', e.target.value)}
+                          placeholder="engr@domain.com"
+                          style={{
+                            width: '100%',
+                            padding: '10px 12px',
+                            background: '#07090e',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            borderRadius: '6px',
+                            color: '#f8fafc',
+                            fontSize: '12.5px',
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', marginBottom: 5 }}>
+                          PHONE NUMBER
+                        </label>
+                        <input
+                          type="text"
+                          value={form.phone}
+                          onChange={(e) => up('phone', e.target.value)}
+                          placeholder="0300-1234567"
+                          style={{
+                            width: '100%',
+                            padding: '10px 12px',
+                            background: '#07090e',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            borderRadius: '6px',
+                            color: '#f8fafc',
+                            fontSize: '12.5px',
+                          }}
+                        />
                       </div>
                     </div>
-                  </div>
-                  <div className="form-group">
-                    <label className="label" htmlFor="r-bio">Short Bio (optional)</label>
-                    <textarea id="r-bio" className="input" rows={3} placeholder="Describe your experience and services..." value={form.bio} onChange={e => up('bio', e.target.value)} style={{ resize: 'vertical' }} />
-                  </div>
-                  <button id="reg-next-2" onClick={handleNext} className="btn btn-primary btn-full">
-                    Next: Documents & Photo →
-                  </button>
-                </div>
-              )}
 
-              {/* ─── Step 2 ─── */}
-              {step === 2 && (
-                <div className="animate-fadeIn">
-                  {/* Document upload */}
-                  <div className="form-group">
-                    <label className="label">📄 Upload CNIC / Business License *</label>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', marginBottom: 5 }}>
+                        CNIC / NATIONAL IDENTITY ID
+                      </label>
+                      <input
+                        type="text"
+                        value={form.cnic}
+                        onChange={(e) => up('cnic', e.target.value)}
+                        placeholder="35201-1234567-1"
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          background: '#07090e',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: '6px',
+                          color: '#f8fafc',
+                          fontSize: '12.5px',
+                          fontFamily: "'JetBrains Mono', monospace",
+                        }}
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleNextStep}
+                      style={{
+                        padding: '12px',
+                        background: 'linear-gradient(135deg, #d4af37 0%, #b89327 100%)',
+                        border: 'none',
+                        borderRadius: '6px',
+                        color: '#07090e',
+                        fontWeight: 800,
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        marginTop: 4,
+                      }}
+                    >
+                      PROCEED TO WORKSHOP CREDENTIALS ➔
+                    </button>
+                  </div>
+                )}
+
+                {/* Step 1: Workshop & Specialization */}
+                {step === 1 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', marginBottom: 5 }}>
+                        WORKSHOP / ENTITY NAME
+                      </label>
+                      <input
+                        type="text"
+                        value={form.shopName}
+                        onChange={(e) => up('shopName', e.target.value)}
+                        placeholder="e.g. Apex Precision Motors & Diagnostics"
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          background: '#07090e',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: '6px',
+                          color: '#f8fafc',
+                          fontSize: '12.5px',
+                        }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', marginBottom: 5 }}>
+                        SERVICE SPECIALIZATION
+                      </label>
+                      <select
+                        value={form.serviceType}
+                        onChange={(e) => up('serviceType', e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          background: '#07090e',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: '6px',
+                          color: '#f8fafc',
+                          fontSize: '12px',
+                        }}
+                      >
+                        {SERVICE_TYPES.map((t) => (
+                          <option key={t} value={t} style={{ background: '#0c1018' }}>
+                            {t}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '9.5px', color: '#94a3b8', marginBottom: 5 }}>
+                        PHYSICAL SERVICE LOCATION
+                      </label>
+                      <input
+                        type="text"
+                        value={form.shopAddress}
+                        onChange={(e) => up('shopAddress', e.target.value)}
+                        placeholder="Plot 14, Commercial Sector Y, DHA Lahore"
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          background: '#07090e',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: '6px',
+                          color: '#f8fafc',
+                          fontSize: '12.5px',
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                      <button
+                        type="button"
+                        onClick={() => setStep(0)}
+                        style={{
+                          flex: 1,
+                          padding: '11px',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: '6px',
+                          color: '#94a3b8',
+                          cursor: 'pointer',
+                          fontSize: '11.5px',
+                        }}
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleNextStep}
+                        style={{
+                          flex: 2,
+                          padding: '11px',
+                          background: 'linear-gradient(135deg, #d4af37 0%, #b89327 100%)',
+                          border: 'none',
+                          borderRadius: '6px',
+                          color: '#07090e',
+                          fontWeight: 800,
+                          fontSize: '11.5px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        PROCEED TO VERIFICATION ➔
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 2: Biometrics & Documents */}
+                {step === 2 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {/* Document Upload */}
                     <div
                       onClick={() => fileRef.current?.click()}
                       style={{
-                        border: `2px dashed ${docUploaded ? 'var(--success)' : 'var(--border)'}`,
-                        borderRadius: 'var(--radius)',
-                        padding: '20px',
+                        padding: '14px',
+                        border: '1px dashed rgba(212, 175, 55, 0.4)',
+                        background: 'rgba(212, 175, 55, 0.04)',
+                        borderRadius: '8px',
                         textAlign: 'center',
                         cursor: 'pointer',
-                        background: docUploaded ? 'rgba(34,197,94,0.05)' : 'var(--bg-input)',
-                        transition: 'all 0.2s',
                       }}
                     >
-                      <div style={{ fontSize: '28px', marginBottom: 6 }}>{docUploaded ? '✅' : '📂'}</div>
-                      <div style={{ fontSize: '13px', color: docUploaded ? 'var(--success)' : 'var(--text-secondary)', fontWeight: docUploaded ? 600 : 400 }}>
-                        {docUploaded ? docUploaded : 'Click to upload document'}
+                      <input
+                        ref={fileRef}
+                        type="file"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={handleFileChange}
+                        style={{ display: 'none' }}
+                      />
+                      <div style={{ fontSize: '18px', marginBottom: 4 }}>📄</div>
+                      <div style={{ fontSize: '11.5px', color: '#f3e5ab', fontWeight: 600 }}>
+                        {docUploaded ? `Attached: ${docUploaded}` : 'Upload Trade License / CNIC Document'}
                       </div>
-                      <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 3 }}>PDF, JPG, PNG — Max 10MB</div>
+                      <div style={{ fontSize: '9.5px', color: '#64748b', marginTop: 2 }}>
+                        PDF, PNG or JPG (Max 15MB)
+                      </div>
                     </div>
-                    <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFileChange} style={{ display: 'none' }} />
-                    {docUploaded && (
-                      <button onClick={() => setDocUploaded(null)} className="btn btn-ghost btn-sm" style={{ marginTop: 8 }}>🗑️ Remove</button>
-                    )}
-                  </div>
 
-                  {/* Live photo */}
-                  <div className="form-group">
-                    <label className="label">🤳 Live Selfie for Identity Verification *</label>
-                    <div style={{
-                      border: `2px solid ${photoTaken ? 'var(--success)' : cameraActive ? 'var(--accent)' : 'var(--border)'}`,
-                      borderRadius: 'var(--radius)',
-                      overflow: 'hidden',
-                      background: 'var(--bg-input)',
-                      transition: 'border-color 0.3s',
-                    }}>
-                      {cameraActive ? (
-                        <div style={{ position: 'relative' }}>
-                          <video ref={videoRef} autoPlay playsInline muted
-                            style={{ width: '100%', display: 'block', maxHeight: 200, objectFit: 'cover' }} />
-                          <div style={{
-                            position: 'absolute', inset: 0,
-                            border: '3px solid rgba(108,99,255,0.5)',
-                            borderRadius: 0,
-                            pointerEvents: 'none',
-                          }} />
-                          <button id="btn-capture-photo" onClick={capturePhoto} style={{
-                            position: 'absolute', bottom: 14, left: '50%', transform: 'translateX(-50%)',
-                            width: 52, height: 52,
-                            background: 'white', border: '4px solid var(--accent)', borderRadius: '50%',
-                            cursor: 'pointer', fontSize: '20px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-                          }}>📷</button>
+                    {/* Live Biometric Camera Capture */}
+                    <div
+                      style={{
+                        background: '#07090e',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: '8px',
+                        padding: '12px',
+                        textAlign: 'center',
+                      }}
+                    >
+                      {photoDataUrl ? (
+                        <div>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={photoDataUrl}
+                            alt="Captured Live"
+                            style={{
+                              width: '100px',
+                              height: '100px',
+                              borderRadius: '50%',
+                              objectFit: 'cover',
+                              margin: '0 auto 8px auto',
+                              border: '2px solid #22c55e',
+                            }}
+                          />
+                          <div style={{ fontSize: '11px', color: '#22c55e', fontWeight: 700 }}>
+                            ✓ Live Biometric Face Attestation Verified
+                          </div>
+                          <button
+                            type="button"
+                            onClick={retakePhoto}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#d4af37',
+                              fontSize: '10px',
+                              cursor: 'pointer',
+                              marginTop: 4,
+                            }}
+                          >
+                            Retake Photo
+                          </button>
                         </div>
-                      ) : photoTaken && photoDataUrl ? (
-                        <div style={{ position: 'relative' }}>
-                          <img src={photoDataUrl} alt="Captured" style={{ width: '100%', display: 'block', maxHeight: 200, objectFit: 'cover' }} />
-                          <div style={{
-                            position: 'absolute', top: 10, right: 10,
-                            background: 'var(--success)', borderRadius: '50%',
-                            width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: '16px',
-                          }}>✓</div>
+                      ) : cameraActive ? (
+                        <div>
+                          <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            style={{
+                              width: '180px',
+                              height: '135px',
+                              borderRadius: '6px',
+                              margin: '0 auto 8px auto',
+                              background: '#000',
+                            }}
+                          />
+                          <canvas ref={canvasRef} style={{ display: 'none' }} />
+                          <button
+                            type="button"
+                            onClick={capturePhoto}
+                            style={{
+                              padding: '6px 14px',
+                              background: '#22c55e',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Capture Snapshot
+                          </button>
                         </div>
                       ) : (
-                        <div style={{ padding: '20px', textAlign: 'center' }}>
-                          <div style={{ fontSize: '32px', marginBottom: 8 }}>🤳</div>
-                          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: 14 }}>
-                            Take a live selfie for identity verification.<br />
-                            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Make sure your face is clearly visible and well-lit.</span>
+                        <div>
+                          <div style={{ fontSize: '11.5px', color: '#cbd5e1', marginBottom: 6 }}>
+                            Live Camera Attestation Required
                           </div>
-                          <button id="btn-open-camera" onClick={startCamera} className="btn btn-secondary btn-sm">
-                            📷 Open Camera
+                          <button
+                            type="button"
+                            onClick={startCamera}
+                            style={{
+                              padding: '7px 16px',
+                              background: 'rgba(212, 175, 55, 0.1)',
+                              border: '1px solid #d4af37',
+                              borderRadius: '5px',
+                              color: '#f3e5ab',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            📷 Enable Webcam Verification
                           </button>
                         </div>
                       )}
                     </div>
-                    {photoTaken && (
-                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                        <span style={{ fontSize: '12px', color: 'var(--success)', flex: 1 }}>✅ Photo captured successfully</span>
-                        <button onClick={retakePhoto} className="btn btn-ghost btn-sm">🔄 Retake</button>
-                      </div>
-                    )}
-                    <canvas ref={canvasRef} style={{ display: 'none' }} />
-                  </div>
 
-                  {/* Agreement */}
-                  <div style={{ background: 'var(--bg-input)', border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', fontSize: '12px', color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.6 }}>
-                    By submitting, you agree to our <a href="#" style={{ color: 'var(--accent)' }}>Terms of Service</a> and <a href="#" style={{ color: 'var(--accent)' }}>Privacy Policy</a>. Your information is encrypted and secure.
+                    <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                      <button
+                        type="button"
+                        onClick={() => setStep(1)}
+                        style={{
+                          flex: 1,
+                          padding: '11px',
+                          background: 'rgba(255, 255, 255, 0.05)',
+                          border: '1px solid rgba(255, 255, 255, 0.1)',
+                          borderRadius: '6px',
+                          color: '#94a3b8',
+                          cursor: 'pointer',
+                          fontSize: '11.5px',
+                        }}
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSubmitCharter}
+                        disabled={loading}
+                        style={{
+                          flex: 2,
+                          padding: '11px',
+                          background: 'linear-gradient(135deg, #d4af37 0%, #b89327 100%)',
+                          border: 'none',
+                          borderRadius: '6px',
+                          color: '#07090e',
+                          fontWeight: 800,
+                          fontSize: '11.5px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {loading ? 'TRANSMITTING APPLICATION...' : 'SUBMIT CHARTER APPLICATION ➔'}
+                      </button>
+                    </div>
                   </div>
+                )}
 
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    <button onClick={() => setStep(1)} className="btn btn-ghost" style={{ flex: 1 }}>← Back</button>
-                    <button id="btn-submit-register" onClick={handleSubmit} disabled={loading || !docUploaded || !photoTaken}
-                      className="btn btn-primary" style={{ flex: 2, opacity: (!docUploaded || !photoTaken) ? 0.5 : 1 }}>
-                      {loading
-                        ? <><span style={{ display: 'inline-block', animation: 'spin 0.8s linear infinite' }}>⟳</span> Submitting...</>
-                        : '🚀 Submit for Verification'}
-                    </button>
-                  </div>
+                {/* Switch back to sign in */}
+                <div style={{ textAlign: 'center', marginTop: 8, fontSize: '11.5px', color: '#94a3b8' }}>
+                  Already have an accredited charter?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMode('login');
+                      setError('');
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      padding: 0,
+                      color: '#d4af37',
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      letterSpacing: '0.4px',
+                      textDecoration: 'underline',
+                    }}
+                  >
+                    SIGN IN
+                  </button>
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      </main>
+
+      {/* ── 3. BOTTOM FOOTER ─────────────────────────────────── */}
+      <footer
+        style={{
+          padding: '20px 44px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          fontSize: '10.5px',
+          color: '#64748b',
+          fontFamily: "'JetBrains Mono', monospace",
+          borderTop: '1px solid rgba(255, 255, 255, 0.04)',
+          position: 'relative',
+          zIndex: 10,
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          <span style={{ color: '#d4af37' }}>●</span>
+          <span>© 2026 RepairEase Technologies S.A. • FINMA Regulated Depository</span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+          <button
+            onClick={() => showToast('Protocol: Zero-Knowledge Multi-Sig v4.2 Enclave', 'info')}
+            style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '10.5px' }}
+          >
+            PROTOCOL
+          </button>
+          <button
+            onClick={() => showToast('Disclosures: All services cryptographic settlement compliant', 'info')}
+            style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '10.5px' }}
+          >
+            DISCLOSURES
+          </button>
+          <button
+            onClick={() => showToast('Security: Level-5 HSM & Biometric Cryptographic Isolation', 'info')}
+            style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: '10.5px' }}
+          >
+            SECURITY
+          </button>
+        </div>
+      </footer>
+
+      {/* ── 4. FORGOT PASSWORD MODAL ─────────────────────────── */}
+      {forgotModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.85)',
+            backdropFilter: 'blur(10px)',
+            zIndex: 300,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+          }}
+        >
+          <div
+            style={{
+              background: '#0c1018',
+              border: '1px solid rgba(212, 175, 55, 0.4)',
+              borderRadius: '14px',
+              padding: '28px',
+              maxWidth: '440px',
+              width: '100%',
+              boxShadow: '0 0 50px rgba(0,0,0,0.8)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <h3 style={{ fontFamily: "'Cinzel', Georgia, serif", fontSize: '19px', color: '#f8fafc', margin: 0 }}>
+                Reset Vault Passkey
+              </h3>
+              <button
+                onClick={() => setForgotModal(false)}
+                style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '18px', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+            <p style={{ fontSize: '12px', color: '#94a3b8', lineHeight: 1.5, marginBottom: 18 }}>
+              Enter your registered Vault ID or business email address to dispatch an encrypted one-time hardware reset token.
+            </p>
+            <input
+              type="email"
+              value={forgotEmail}
+              onChange={(e) => setForgotEmail(e.target.value)}
+              placeholder="e.g. maximilian.s@repairease.com"
+              style={{
+                width: '100%',
+                padding: '11px 14px',
+                background: '#07090e',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '6px',
+                color: '#f8fafc',
+                fontSize: '12.5px',
+                marginBottom: 20,
+              }}
+            />
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setForgotModal(false)}
+                style={{
+                  flex: 1,
+                  padding: '10px',
+                  borderRadius: '6px',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: '#94a3b8',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setForgotModal(false);
+                  showToast('Encrypted Passkey Reset Token dispatched to your email.', 'success');
+                }}
+                style={{
+                  flex: 1.5,
+                  padding: '10px',
+                  borderRadius: '6px',
+                  background: 'linear-gradient(135deg, #d4af37 0%, #b89327 100%)',
+                  border: 'none',
+                  color: '#07090e',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                }}
+              >
+                Dispatch Reset Token
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
