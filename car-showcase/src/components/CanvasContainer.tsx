@@ -1,14 +1,14 @@
-import { Suspense, useRef } from 'react';
+import { Suspense, useRef, useState, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Environment, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 import CarModel from './CarModel';
 import type { CarModelControls } from './CarModel';
 
-// Speed particles for the high-velocity phase
-function VelocityStreaks({ active }: { active: boolean }) {
+// Speed particles for the high-velocity phase (simplified on mobile)
+function VelocityStreaks({ active, isMobile }: { active: boolean; isMobile: boolean }) {
   const pointsRef = useRef<THREE.Points>(null!);
-  const count = 450;
+  const count = isMobile ? 80 : 350;
 
   const [positions, speeds] = useRef(() => {
     const pos = new Float32Array(count * 3);
@@ -17,7 +17,7 @@ function VelocityStreaks({ active }: { active: boolean }) {
       pos[i * 3] = (Math.random() - 0.5) * 16;
       pos[i * 3 + 1] = Math.random() * 4 - 0.5;
       pos[i * 3 + 2] = (Math.random() - 0.5) * 30;
-      spd[i] = 20 + Math.random() * 30;
+      spd[i] = 18 + Math.random() * 25;
     }
     return [pos, spd];
   }).current();
@@ -39,16 +39,13 @@ function VelocityStreaks({ active }: { active: boolean }) {
   return (
     <points ref={pointsRef}>
       <bufferGeometry>
-        <bufferAttribute
-          attach="attributes-position"
-          args={[positions, 3]}
-        />
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
       <pointsMaterial
-        size={0.07}
-        color="#d4af37"
+        size={isMobile ? 0.05 : 0.06}
+        color="#ccff00"
         transparent
-        opacity={0.7}
+        opacity={0.65}
         blending={THREE.AdditiveBlending}
       />
     </points>
@@ -68,8 +65,17 @@ export default function CanvasContainer({
   onPhaseChange,
   activePhase,
 }: CanvasContainerProps) {
-  // One fixed full-screen <Canvas> behind the page (pointer-events none except hero)
   const isHero = activePhase === 0;
+
+  // Responsive device check: reduce dpr on mobile to [1, 1.5]
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   return (
     <div
@@ -78,62 +84,46 @@ export default function CanvasContainer({
       }`}
     >
       <Canvas
-        shadows
-        dpr={[1, 2]}
+        shadows={!isMobile}
+        dpr={isMobile ? [1, 1.5] : [1, 2]}
         camera={{ position: [0, 1.15, 5.2], fov: 42, near: 0.1, far: 100 }}
         gl={{
           antialias: true,
           toneMapping: THREE.ACESFilmicToneMapping,
           toneMappingExposure: 1.15,
+          powerPreference: 'high-performance',
         }}
         className="w-full h-full"
       >
-        {/* Cinematic Studio Lighting */}
-        <ambientLight intensity={activePhase === 4 ? 0.3 : 0.55} />
-        
-        {/* Main Overhead Spotlight */}
+        <ambientLight intensity={activePhase === 4 ? 0.35 : 0.6} />
+
         <spotLight
           position={[0, 9, 3]}
           angle={0.65}
           penumbra={0.8}
           intensity={14}
-          castShadow
-          shadow-mapSize={2048}
+          castShadow={!isMobile}
+          shadow-mapSize={isMobile ? 512 : 2048}
           shadow-bias={-0.0001}
           color="#ffffff"
         />
 
-        {/* Front Warm Key Light */}
         <directionalLight
           position={[6, 5, 8]}
           intensity={activePhase === 4 ? 1.5 : 2.8}
-          castShadow
-          shadow-mapSize={2048}
+          castShadow={!isMobile}
+          shadow-mapSize={isMobile ? 512 : 2048}
           shadow-bias={-0.0001}
-          color="#fffdf8"
+          color="#ffffff"
         />
 
-        {/* Luxury Gold Side Rim Light */}
-        <directionalLight
-          position={[-7, 3, -4]}
-          intensity={activePhase === 4 ? 4.5 : 3.2}
-          color="#d4af37"
-        />
+        {/* Minimal lime edge rim accent */}
+        <directionalLight position={[-7, 3, -4]} intensity={2.8} color="#ccff00" />
+        <directionalLight position={[6, 2, -6]} intensity={2.2} color="#ffffff" />
+        <pointLight position={[0, -0.4, 0]} intensity={1.2} color="#171717" />
 
-        {/* Cool Cyan Rear Rim Light for Edge Highlights */}
-        <directionalLight
-          position={[6, 2, -6]}
-          intensity={activePhase === 4 ? 3.8 : 2.6}
-          color="#38bdf8"
-        />
-
-        {/* Fill light from undercarriage */}
-        <pointLight position={[0, -0.4, 0]} intensity={1.5} color="#1e293b" />
-
-        {/* Environment reflection map */}
         <Environment preset="city" environmentIntensity={activePhase === 4 ? 0.6 : 0.85} />
 
-        {/* Contact Shadow on asphalt */}
         <ContactShadows
           position={[0, -0.42, 0]}
           opacity={0.85}
@@ -143,10 +133,8 @@ export default function CanvasContainer({
           color="#000000"
         />
 
-        {/* Velocity Streaks in Wheels/Off-Road Stage */}
-        <VelocityStreaks active={activePhase === 4} />
+        <VelocityStreaks active={activePhase === 4} isMobile={isMobile} />
 
-        {/* 3D Car Model */}
         <Suspense fallback={null}>
           <CarModel
             scrollProgressRef={scrollProgressRef}
