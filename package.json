@@ -1,0 +1,12 @@
+{
+  "name": "fyp-code-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix provider-dashboard run dev",
+    "dev:dashboard": "npm --prefix provider-dashboard run dev",
+    "dev:showcase": "npm --prefix car-showcase run dev",
+    "build:dashboard": "npm --prefix provider-dashboard run build",
+    "build:showcase": "npm --prefix car-showcase run build"
+  }
+}
