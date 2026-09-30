@@ -62,6 +62,13 @@ export default function Landing() {
     story.explode = 0; story.rotY = -0.55; story.camZ = 12.5; story.x = heroX;
 
     const ctx = gsap.context(() => {
+      // Whole-page tracker: drives the car's background travel + a velocity lean while scrolling.
+      ScrollTrigger.create({
+        start: 0,
+        end: 'max',
+        onUpdate: (self) => { story.drift = self.progress; story.vel = self.getVelocity(); },
+      });
+
       // One master timeline, scrubbed by page scroll (total length = 1 → the first 4 screens).
       const tl = gsap.timeline({
         defaults: { ease: 'none' },
@@ -86,6 +93,14 @@ export default function Landing() {
   return (
     <div className="relative bg-transparent text-white">
       <Loader hidden={ready} />
+
+      {/* Ambient depth layers behind the 3D canvas */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-0 overflow-hidden">
+        <div className="absolute -left-40 top-1/4 h-[520px] w-[520px] rounded-full bg-steel/25 blur-[130px]" />
+        <div className="absolute -right-32 bottom-0 h-[460px] w-[460px] rounded-full bg-brand/[0.07] blur-[140px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_45%,rgba(2,10,24,.75)_100%)]" />
+      </div>
+
       <CarScene />
 
       <Navbar />
@@ -110,7 +125,7 @@ export default function Landing() {
         </section>
 
         {/* 2 — Disassemble */}
-        <section className="flex h-screen items-end px-6 pb-14 md:justify-end md:pb-16 md:pr-[8vw]">
+        <section id="process" className="flex h-screen items-end px-6 pb-14 md:justify-end md:pb-16 md:pr-[8vw]">
           <div className="reveal max-w-md md:text-right">
             <div className="mb-4 font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-brand">01 — Disassembly</div>
             <h2 className="font-display text-4xl font-semibold leading-tight md:text-5xl">Laid bare, <em className="text-brand">piece by piece.</em></h2>

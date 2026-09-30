@@ -128,7 +128,8 @@ function ExplodedCar() {
   const rig = useMemo(() => buildRig(scene), [scene]);
   const group = useRef<THREE.Group>(null);
   const e = useRef(0);
-  const { camera, size } = useThree();
+  const { camera, size, pointer } = useThree();
+  const lean = useRef({ vel: 0, px: 0, py: 0 });
 
   useFrame((state, dt) => {
     const t = state.clock.elapsedTime;
@@ -149,16 +150,27 @@ function ExplodedCar() {
       }
     }
 
+    // Background travel: the car keeps moving across the page as you scroll, and leans into scroll velocity.
+    story.vel = THREE.MathUtils.damp(story.vel, 0, 3, dt);
+    lean.current.vel = THREE.MathUtils.damp(lean.current.vel, THREE.MathUtils.clamp(story.vel / 3500, -1, 1), 5, dt);
+    lean.current.px = THREE.MathUtils.damp(lean.current.px, pointer.x, 2.5, dt);
+    lean.current.py = THREE.MathUtils.damp(lean.current.py, pointer.y, 2.5, dt);
+    const d = story.drift * Math.PI * 2;
+
     const g = group.current;
     if (g) {
-      g.rotation.y = THREE.MathUtils.damp(g.rotation.y, story.rotY, 4, dt);
-      g.position.x = THREE.MathUtils.damp(g.position.x, narrow ? 0 : story.x, 4, dt);
-      g.position.y = 0.7 * smooth(ex); // lift so parts below the chassis clear the floor
+      const driftX = narrow ? 0 : Math.sin(d * 1.5) * 0.55 * (1 - ex);
+      g.rotation.y = THREE.MathUtils.damp(g.rotation.y, story.rotY + Math.sin(d * 2) * 0.16 + lean.current.px * 0.18, 4, dt);
+      g.rotation.z = -lean.current.vel * 0.07; // roll into the scroll
+      g.rotation.x = lean.current.vel * 0.05;
+      g.position.x = THREE.MathUtils.damp(g.position.x, (narrow ? 0 : story.x) + driftX, 4, dt);
+      g.position.y = 0.7 * smooth(ex) + Math.sin(d * 3) * 0.14 + Math.sin(t * 0.8) * 0.035 - lean.current.vel * 0.18;
+      g.position.z = Math.cos(d * 1.5) * 0.9 * (1 - ex);
       g.scale.setScalar(narrow ? 0.62 : 1);
     }
 
     const camZ = story.camZ * (narrow ? 1.35 : 1);
-    camera.position.set(0, 2.6 + ex * 1.2, camZ);
+    camera.position.set(lean.current.px * 0.5, 2.6 + ex * 1.2 + lean.current.py * 0.25, camZ - lean.current.vel * 0.6);
     camera.lookAt(0, 0.35 + ex * 0.6, 0);
   });
 

@@ -3,12 +3,21 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import {
-  LayoutDashboard, Briefcase, UserRound, Building2, BadgeCheck, ShieldCheck, ChevronsLeft, ChevronsRight, X,
+  LayoutDashboard, Briefcase, MessageCircle, Star, Bell, Settings, UserRound, Building2, BadgeCheck, ShieldCheck, ChevronsLeft, ChevronsRight, X,
 } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 
 const NAV = [
   { group: 'Workspace', items: [{ href: '/dashboard', label: 'Overview', icon: LayoutDashboard }, { href: '/jobs', label: 'Job Requests', icon: Briefcase }] },
+  {
+    group: 'Engagement',
+    items: [
+      { href: '/chat', label: 'Live Chat', icon: MessageCircle },
+      { href: '/reviews', label: 'Reviews & Ratings', icon: Star },
+      { href: '/notifications', label: 'Notifications', icon: Bell },
+      { href: '/settings', label: 'Settings', icon: Settings },
+    ],
+  },
   {
     group: 'Provider Entities',
     items: [

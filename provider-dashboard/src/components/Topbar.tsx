@@ -1,14 +1,19 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Menu, Search, LogOut, UserRound, Building2, BadgeCheck, ShieldCheck, LayoutDashboard, Briefcase, BadgeCheck as Verified } from 'lucide-react';
+import { Menu, Search, LogOut, UserRound, Building2, BadgeCheck, ShieldCheck, LayoutDashboard, Briefcase, MessageCircle, Star, Bell, Settings, BadgeCheck as Verified } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 import { useToast } from './ToastProvider';
 import { OPEN_SIDEBAR_EVENT } from './Sidebar';
+import QuickPie from './QuickPie';
 
 const PAGES = [
   { label: 'Overview', desc: 'Dashboard home', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Job Requests', desc: 'Incoming and active service jobs', href: '/jobs', icon: Briefcase },
+  { label: 'Live Chat', desc: 'Talk to customers', href: '/chat', icon: MessageCircle },
+  { label: 'Reviews & Ratings', desc: 'Customer feedback', href: '/reviews', icon: Star },
+  { label: 'Notification Centre', desc: 'Alerts and updates', href: '/notifications', icon: Bell },
+  { label: 'Settings', desc: 'Availability and preferences', href: '/settings', icon: Settings },
   { label: 'Profile & Identity', desc: 'Photo, name, contact details', href: '/profile?tab=general', icon: UserRound },
   { label: 'Business Details', desc: 'Workshop, registration, service area', href: '/profile?tab=business', icon: Building2 },
   { label: 'Verification & Badges', desc: 'Document and identity status', href: '/profile?tab=verification', icon: BadgeCheck },
@@ -59,6 +64,8 @@ export default function Topbar() {
         .tb { position: sticky; top: 0; z-index: 50; height: var(--topbar-height); display: flex; align-items: center; justify-content: space-between; gap: 16px;
           padding: 0 40px; background: rgba(3,13,31,.82); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border-light); }
         .tb-menu { display: none; }
+        @media (max-width: 1150px) { .tb-search { min-width: 0 !important; } .tb-search span, .tb-search kbd { display: none; } }
+        @media (max-width: 700px) { .tb-pie { display: none; } }
         .tb-search { display: flex; align-items: center; gap: 10px; min-width: 300px; padding: 9px 14px; background: rgba(4,18,41,.7);
           border: 1px solid var(--border-light); border-radius: 10px; color: var(--text-muted); font-size: 13px; cursor: pointer; font-family: inherit; }
         .tb-search:hover { border-color: var(--border); color: var(--text-secondary); }
@@ -75,6 +82,8 @@ export default function Topbar() {
             <kbd style={{ fontFamily: 'var(--font-mono)', fontSize: 10, padding: '2px 6px', border: '1px solid var(--border)', borderRadius: 5 }}>Ctrl K</kbd>
           </button>
         </div>
+
+        <div className="tb-pie" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}><QuickPie /></div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <button onClick={() => { toggleOnline(); showToast(user.online ? 'You are now offline — new requests paused' : 'You are online and accepting requests', 'info'); }}
