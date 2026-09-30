@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Menu, Search, LogOut, UserRound, Building2, BadgeCheck, ShieldCheck, LayoutDashboard, Briefcase, MapPinned, MessageCircle, Star, Bell, Settings, BadgeCheck as Verified } from 'lucide-react';
+import { Menu, Search, LogOut, UserRound, Building2, BadgeCheck, ShieldCheck, LayoutDashboard, Briefcase, MessageCircle, Star, Bell, Settings, BadgeCheck as Verified } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 import { useToast } from './ToastProvider';
 import { OPEN_SIDEBAR_EVENT } from './Sidebar';
@@ -9,7 +9,6 @@ import { OPEN_SIDEBAR_EVENT } from './Sidebar';
 const PAGES = [
   { label: 'Overview', desc: 'Dashboard home', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Job Requests', desc: 'Incoming and active service jobs', href: '/jobs', icon: Briefcase },
-  { label: 'Live Tracking', desc: 'Customer location and route', href: '/tracking', icon: MapPinned },
   { label: 'Live Chat', desc: 'Talk to customers', href: '/chat', icon: MessageCircle },
   { label: 'Reviews & Ratings', desc: 'Customer feedback', href: '/reviews', icon: Star },
   { label: 'Notification Centre', desc: 'Alerts and updates', href: '/notifications', icon: Bell },

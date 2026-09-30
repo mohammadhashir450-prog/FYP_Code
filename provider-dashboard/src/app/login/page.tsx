@@ -1,18 +1,12 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import dynamic from 'next/dynamic';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, ArrowRight, Camera, Eye, EyeOff, FileText } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Camera, Eye, EyeOff, FileText, Lock, Phone, ShieldCheck, TriangleAlert, Wrench, Clock, BadgeCheck } from 'lucide-react';
 import { useAuth, phoneKey } from '@/components/AuthProvider';
 import { useToast } from '@/components/ToastProvider';
 import { BUSINESS_TYPES, EXPERIENCE, SERVICE_TYPES, fileToDataUrl } from '@/lib/profile';
-import { garage, pulseError, pulseTyping, GarageFocus } from '@/lib/garageState';
 
-const GarageScene = dynamic(() => import('@/components/garage/GarageScene'), { ssr: false });
-
-const STEP_TITLES = ['Create your account', 'Your workshop', 'Verify your identity'];
-const STEP_SAYS = ['New here? Let me get your bay ready.', 'Tell me about your workshop.', 'Last step — I just need your ID.'];
+const STEPS = ['Account', 'Business', 'Verification'];
 
 const empty = {
   fullName: '', phone: '', password: '', confirm: '',
@@ -30,195 +24,220 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPass, setShowPass] = useState(false);
-  const [focus, setFocus] = useState<GarageFocus>('none');
-  const [won, setWon] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const submitted = useRef(false);
   const [form, setForm] = useState(empty);
   const docRef = useRef<HTMLInputElement>(null);
   const photoRef = useRef<HTMLInputElement>(null);
 
-  const mode = ready && !hasAccount ? 'register' : chosenMode;
-
   useEffect(() => {
-    if (ready && isAuthenticated && !submitted) router.replace('/dashboard');
-  }, [ready, isAuthenticated, submitted, router]);
+    if (ready && isAuthenticated && !submitted.current) router.replace('/dashboard');
+  }, [ready, isAuthenticated, router]);
 
-  // Drive the 3D workman
-  useEffect(() => { garage.mode = mode; garage.step = step; }, [mode, step]);
-  useEffect(() => { garage.focus = focus; }, [focus]);
-  useEffect(() => { garage.success = won ? 1 : 0; }, [won]);
-  useEffect(() => () => { garage.mode = 'login'; garage.step = 0; garage.focus = 'none'; garage.success = 0; garage.typing = 0; garage.error = 0; }, []);
-
-  const say = won ? "You're in! Let's get to work."
-    : error ? 'Hmm… check that and try again.'
-    : focus === 'password' ? "I'm not looking, promise."
-    : focus === 'text' ? 'Take your time.'
-    : mode === 'login' ? 'Welcome back, boss. Sign in and let’s fix some cars.'
-    : STEP_SAYS[step];
-
-  const fail = (msg: string) => { setError(msg); pulseError(); };
-  const up = (k: keyof typeof empty, v: string) => { setForm((f) => ({ ...f, [k]: v })); pulseTyping(); if (error) setError(''); };
-  const fp = (kind: GarageFocus) => ({ onFocus: () => setFocus(kind), onBlur: () => setFocus('none') });
+  const mode = ready && !hasAccount ? 'register' : chosenMode;
+  const up = (k: keyof typeof empty, v: string) => { setForm((f) => ({ ...f, [k]: v })); if (error) setError(''); };
   const switchMode = (m: 'login' | 'register') => { setMode(m); setStep(0); setError(''); };
-
-  const celebrate = (then: () => void) => { setWon(true); setTimeout(then, 1600); };
 
   const handleLogin = async (e: React.SyntheticEvent) => {
     e.preventDefault();
-    if (!form.phone.trim() || !form.password) return fail('Enter your phone number and password.');
+    if (!form.phone.trim() || !form.password) return setError('Enter your phone number and password.');
     setLoading(true);
-    setSubmitted(true);
     const res = await login(form.phone, form.password);
     setLoading(false);
-    if (!res.ok) { setSubmitted(false); return fail(res.error || 'Sign in failed.'); }
+    if (!res.ok) return setError(res.error || 'Sign in failed.');
     showToast('Welcome back to RepairEase', 'success');
-    celebrate(() => router.push('/dashboard'));
+    router.push('/dashboard');
   };
 
   const next = () => {
     if (step === 0) {
-      if (!form.fullName.trim()) return fail('Enter your full name.');
-      if (phoneKey(form.phone).length < 10) return fail('Enter a valid phone number.');
-      if (form.password.length < 8) return fail('Password must be at least 8 characters.');
-      if (form.password !== form.confirm) return fail('Passwords do not match.');
+      if (!form.fullName.trim()) return setError('Enter your full name.');
+      if (phoneKey(form.phone).length < 10) return setError('Enter a valid phone number.');
+      if (form.password.length < 8) return setError('Password must be at least 8 characters.');
+      if (form.password !== form.confirm) return setError('Passwords do not match.');
     }
     if (step === 1) {
-      if (!form.businessName.trim()) return fail('Enter your business or workshop name.');
-      if (!form.serviceType) return fail('Choose your service specialization.');
-      if (!form.address.trim()) return fail('Enter your workshop address.');
+      if (!form.businessName.trim()) return setError('Enter your business or workshop name.');
+      if (!form.serviceType) return setError('Choose your service specialization.');
+      if (!form.address.trim()) return setError('Enter your workshop address.');
     }
     setError('');
     setStep((s) => s + 1);
   };
 
   const submit = async () => {
-    if (!form.nationalId.trim()) return fail('Enter your national identity number.');
-    if (!form.documentName) return fail('Upload your trade licence or ID document.');
+    if (!form.nationalId.trim()) return setError('Enter your national identity number.');
+    if (!form.documentName) return setError('Upload your trade licence or ID document.');
     setLoading(true);
-    setSubmitted(true);
-    const { password, confirm: _confirm, ...profile } = form;
-    void _confirm;
+    const { password, confirm, ...profile } = form;
+    submitted.current = true;
     await register({ ...profile, designation: '' }, password);
     setLoading(false);
     showToast('Application submitted — awaiting review', 'success');
-    celebrate(() => router.push('/pending'));
+    router.push('/pending');
   };
 
   const onPhoto = async (f?: File) => {
     if (!f) return;
-    if (!f.type.startsWith('image/') || f.size > 8 * 1024 * 1024) return fail('Choose an image under 8MB.');
-    try { up('photo', await fileToDataUrl(f)); } catch { fail('Could not read that image.'); }
+    if (!f.type.startsWith('image/') || f.size > 8 * 1024 * 1024) return setError('Choose an image under 8MB.');
+    try { up('photo', await fileToDataUrl(f)); } catch { setError('Could not read that image.'); }
   };
 
-  if (!ready || (isAuthenticated && !submitted)) return null;
-
-  const inputCls = 'w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3.5 text-[15px] text-ink outline-none transition placeholder:text-mist-dim/50 hover:border-white/20 focus:border-brand/70 focus:bg-white/[0.07] focus:shadow-[0_0_0_4px_rgba(255,214,10,.12)]';
-  const labelCls = 'mb-2 block font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-mist-dim';
+  if (!ready || isAuthenticated) return null;
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-navy">
-      <GarageScene say={say} />
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <style>{`
+        .auth-card { display: grid; grid-template-columns: 42% 58%; width: min(1060px, 100%); overflow: hidden; }
+        .auth-left { padding: 52px 44px; display: flex; flex-direction: column; justify-content: space-between; position: relative;
+          background: radial-gradient(500px 340px at 0% 0%, rgba(43,123,214,.28), transparent 70%), linear-gradient(175deg, #06204a 0%, #04122b 100%);
+          border-right: 1px solid var(--border-light); }
+        .auth-right { padding: 52px 52px; }
+        @media (max-width: 900px) { .auth-card { grid-template-columns: 1fr; } .auth-left { padding: 32px 26px; gap: 28px; } .auth-right { padding: 32px 22px; } .auth-hide-sm { display: none !important; } }
+      `}</style>
 
-      {/* readability gradients */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_left,rgba(3,13,31,.92)_0%,rgba(3,13,31,.55)_38%,transparent_62%)] max-md:bg-[linear-gradient(to_top,rgba(3,13,31,.95)_0%,rgba(3,13,31,.6)_45%,transparent_70%)]" />
-      <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_55%,rgba(2,10,24,.7)_100%)]" />
-
-      {/* brand */}
-      <Link href="/" className="absolute left-5 top-5 z-10 flex items-center gap-3 no-underline md:left-10 md:top-8" aria-label="RepairEase home">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="" width={44} height={44} className="h-11 w-11 rounded-xl bg-white p-0.5 shadow-[0_0_30px_rgba(255,214,10,.25)]" />
-        <span className="leading-none">
-          <span className="block font-display text-[17px] font-bold tracking-[0.22em] text-brand">REPAIREASE</span>
-          <span className="mt-1.5 block font-mono text-[8px] font-semibold uppercase tracking-[0.36em] text-mist-dim">Provider Platform</span>
-        </span>
-      </Link>
-      <div className="pointer-events-none absolute bottom-6 left-10 hidden font-mono text-[10px] uppercase tracking-[0.3em] text-mist-dim md:block">Move your mouse — he is watching</div>
-
-      {/* card */}
-      <main className="pointer-events-none absolute inset-0 flex items-end justify-center overflow-y-auto px-4 pb-4 md:items-center md:justify-end md:px-0 md:pb-0 md:pr-[7vw]">
-        <div className="pointer-events-auto relative my-auto w-full max-w-[430px] animate-[fadeIn_.7s_ease_both] rounded-[28px] border border-white/10 bg-navy/70 p-7 shadow-[0_40px_120px_rgba(0,0,0,.65)] backdrop-blur-2xl md:p-10">
-          <span aria-hidden className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-brand/70 to-transparent" />
-
-          {mode === 'register' && (
-            <div className="mb-6 flex gap-1.5" aria-label={`Step ${step + 1} of 3`}>
-              {[0, 1, 2].map((i) => <span key={i} className={`h-[3px] flex-1 rounded-full transition-colors duration-500 ${i <= step ? 'bg-brand' : 'bg-white/10'}`} />)}
-            </div>
-          )}
-
-          <h1 className="font-display text-[32px] font-semibold leading-tight">{mode === 'login' ? 'Welcome back' : STEP_TITLES[step]}</h1>
-          <p className="mt-2 text-sm text-mist-dim">{mode === 'login' ? 'Sign in with your phone number.' : `Step ${step + 1} of 3`}</p>
-
-          {error && <div role="alert" className="mt-6 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-[13px] text-red-200">{error}</div>}
-
-          {mode === 'login' && (
-            <form onSubmit={handleLogin} className="mt-7 grid gap-5" noValidate>
-              <label><span className={labelCls}>Phone number</span>
-                <input className={inputCls} type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={(e) => up('phone', e.target.value)} {...fp('text')} placeholder="0300 1234567" /></label>
-              <label><span className={labelCls}>Password</span>
-                <span className="relative block">
-                  <input className={`${inputCls} pr-12`} type={showPass ? 'text' : 'password'} autoComplete="current-password" value={form.password} onChange={(e) => up('password', e.target.value)} {...fp('password')} placeholder="Your password" />
-                  <button type="button" onClick={() => setShowPass((v) => !v)} aria-label="Toggle password visibility" className="absolute right-3 top-1/2 -translate-y-1/2 border-0 bg-transparent p-1 text-mist-dim transition hover:text-brand">{showPass ? <EyeOff size={18} /> : <Eye size={18} />}</button>
-                </span></label>
-              <button className="btn btn-primary btn-lg btn-full mt-1" disabled={loading || won}>{won ? 'Welcome!' : loading ? 'Signing in…' : <>Sign in <ArrowRight size={16} /></>}</button>
-              <p className="text-center text-[13px] text-mist-dim">New provider? <button type="button" onClick={() => switchMode('register')} className="border-0 bg-transparent p-0 font-semibold text-brand hover:underline">Apply for an account</button></p>
-            </form>
-          )}
-
-          {mode === 'register' && (
-            <div className="mt-7 grid gap-5">
-              {step === 0 && (
-                <>
-                  <label><span className={labelCls}>Full name</span><input className={inputCls} value={form.fullName} onChange={(e) => up('fullName', e.target.value)} {...fp('text')} placeholder="Your full name" autoComplete="name" /></label>
-                  <label><span className={labelCls}>Phone number</span><input className={inputCls} type="tel" inputMode="tel" value={form.phone} onChange={(e) => up('phone', e.target.value)} {...fp('text')} placeholder="0300 1234567" autoComplete="tel" /></label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <label><span className={labelCls}>Password</span><input className={inputCls} type={showPass ? 'text' : 'password'} value={form.password} onChange={(e) => up('password', e.target.value)} {...fp('password')} placeholder="Min. 8 characters" autoComplete="new-password" /></label>
-                    <label><span className={labelCls}>Confirm</span><input className={inputCls} type={showPass ? 'text' : 'password'} value={form.confirm} onChange={(e) => up('confirm', e.target.value)} {...fp('password')} autoComplete="new-password" /></label>
-                  </div>
-                  <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-mist-dim"><input type="checkbox" checked={showPass} onChange={(e) => setShowPass(e.target.checked)} className="accent-[#ffd60a]" /> Show passwords</label>
-                </>
-              )}
-              {step === 1 && (
-                <>
-                  <label><span className={labelCls}>Workshop name</span><input className={inputCls} value={form.businessName} onChange={(e) => up('businessName', e.target.value)} {...fp('text')} placeholder="Your business name" /></label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <label><span className={labelCls}>Specialization</span><select className="select" value={form.serviceType} onChange={(e) => up('serviceType', e.target.value)}><option value="">Select</option>{SERVICE_TYPES.map((t) => <option key={t}>{t}</option>)}</select></label>
-                    <label><span className={labelCls}>Business type</span><select className="select" value={form.businessType} onChange={(e) => up('businessType', e.target.value)}><option value="">Select</option>{BUSINESS_TYPES.map((t) => <option key={t}>{t}</option>)}</select></label>
-                  </div>
-                  <label><span className={labelCls}>Experience</span><select className="select" value={form.experience} onChange={(e) => up('experience', e.target.value)}><option value="">Select</option>{EXPERIENCE.map((t) => <option key={t}>{t}</option>)}</select></label>
-                  <label><span className={labelCls}>Workshop address</span><input className={inputCls} value={form.address} onChange={(e) => up('address', e.target.value)} {...fp('text')} placeholder="Street, area, city" /></label>
-                </>
-              )}
-              {step === 2 && (
-                <>
-                  <label><span className={labelCls}>National ID (CNIC)</span><input className={`${inputCls} font-mono`} value={form.nationalId} onChange={(e) => up('nationalId', e.target.value)} {...fp('text')} placeholder="00000-0000000-0" /></label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button type="button" onClick={() => docRef.current?.click()} className="flex min-h-[112px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 bg-white/[0.03] p-4 text-center text-ink transition hover:border-brand/60">
-                      <FileText size={22} className={form.documentName ? 'text-brand' : 'text-mist-dim'} />
-                      <span className="break-all text-[12.5px] font-semibold">{form.documentName || 'Upload licence / ID'}</span>
-                    </button>
-                    <button type="button" onClick={() => photoRef.current?.click()} className="flex min-h-[112px] flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border border-dashed border-white/20 bg-white/[0.03] p-0 text-center text-ink transition hover:border-brand/60">
-                      {form.photo
-                        // eslint-disable-next-line @next/next/no-img-element
-                        ? <img src={form.photo} alt="Profile" className="h-[112px] w-full object-cover" />
-                        : <><Camera size={22} className="text-mist-dim" /><span className="text-[12.5px] font-semibold">Photo <span className="font-normal text-mist-dim">(optional)</span></span></>}
-                    </button>
-                  </div>
-                  <input ref={docRef} type="file" accept=".pdf,image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) { if (f.size > 15 * 1024 * 1024) fail('Document must be under 15MB.'); else up('documentName', f.name); } e.target.value = ''; }} />
-                  <input ref={photoRef} type="file" accept="image/*" hidden onChange={(e) => { onPhoto(e.target.files?.[0]); e.target.value = ''; }} />
-                </>
-              )}
-
-              <div className="mt-1 flex gap-3">
-                {step > 0 && <button className="btn btn-ghost btn-lg" onClick={() => { setError(''); setStep(step - 1); }}><ArrowLeft size={16} /></button>}
-                {step < 2
-                  ? <button className="btn btn-primary btn-lg flex-1" onClick={next}>Continue <ArrowRight size={16} /></button>
-                  : <button className="btn btn-primary btn-lg flex-1" disabled={loading || won} onClick={submit}>{won ? 'Submitted!' : loading ? 'Submitting…' : 'Submit application'}</button>}
+      <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 16px' }}>
+        <div className="panel auth-card animate-fadeIn" style={{ boxShadow: '0 30px 90px rgba(0,0,0,.65), 0 0 60px rgba(29,85,144,.15)' }}>
+          {/* Brand panel */}
+          <div className="auth-left">
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg, var(--yellow), transparent)' }} />
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 48 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/logo.png" alt="RepairEase" width={58} height={58} className="logo-tile" style={{ width: 58, height: 58, boxShadow: '0 0 28px rgba(255,214,10,.25)' }} />
+                <div>
+                  <div style={{ fontFamily: "'Cinzel', serif", fontWeight: 700, fontSize: 21, letterSpacing: 3, color: 'var(--yellow)' }}>REPAIREASE</div>
+                  <div className="eyebrow eyebrow-muted" style={{ fontSize: 9, marginTop: 4 }}>Provider Portal</div>
+                </div>
               </div>
-              {hasAccount && <p className="text-center text-[13px] text-mist-dim">Already registered? <button type="button" onClick={() => switchMode('login')} className="border-0 bg-transparent p-0 font-semibold text-brand hover:underline">Sign in</button></p>}
+              <h1 className="serif" style={{ fontSize: 40, lineHeight: 1.15, fontWeight: 500, marginBottom: 20 }}>
+                Repairs, <br /><em className="gradient-text" style={{ fontWeight: 600 }}>delivered</em><br />to the doorstep.
+              </h1>
+              <div style={{ width: 44, height: 2, background: 'var(--yellow)', marginBottom: 20, boxShadow: '0 0 12px rgba(255,214,10,.5)' }} />
+              <p style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--text-secondary)', maxWidth: 340 }}>
+                Manage your workshop profile, credentials and service requests from one secure, professional workspace.
+              </p>
             </div>
-          )}
+            <div className="auth-hide-sm" style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 36 }}>
+              {[{ i: BadgeCheck, t: 'Verified provider badge' }, { i: ShieldCheck, t: 'Secure account and data' }, { i: Wrench, t: 'Built for mechanics & technicians' }].map(({ i: Icon, t }) => (
+                <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: 'var(--text-secondary)' }}>
+                  <Icon size={17} color="var(--yellow)" /> {t}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Form panel */}
+          <div className="auth-right">
+            <div className="eyebrow" style={{ marginBottom: 12 }}>{mode === 'login' ? 'Secure Sign In' : `Provider Application · Step ${step + 1} of 3`}</div>
+            <h2 className="serif" style={{ fontSize: 32, fontWeight: 600, marginBottom: 8 }}>{mode === 'login' ? 'Welcome back' : ['Create your account', 'Business details', 'Verify your identity'][step]}</h2>
+            <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 28, lineHeight: 1.6 }}>
+              {mode === 'login' ? 'Sign in to manage your provider profile.' : ['Tell us who you are and set a password.', 'Describe the service you offer.', 'Add your ID number and a supporting document.'][step]}
+            </p>
+
+            {mode === 'register' && (
+              <div style={{ display: 'flex', gap: 8, marginBottom: 26 }}>
+                {STEPS.map((s, i) => (
+                  <div key={s} style={{ flex: 1 }}>
+                    <div style={{ height: 3, borderRadius: 2, background: i <= step ? 'var(--yellow)' : 'var(--border)', transition: 'background .3s' }} />
+                    <div className="label" style={{ marginTop: 8, color: i === step ? 'var(--yellow)' : undefined }}>{i + 1}. {s}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {error && <div className="alert alert-danger" style={{ marginBottom: 22 }}><TriangleAlert size={17} style={{ flexShrink: 0, marginTop: 1 }} /><span>{error}</span></div>}
+
+            {mode === 'login' && (
+              <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+                <div className="field">
+                  <label className="label">Phone number</label>
+                  <div className="input-wrap"><input className="input has-icon" type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={(e) => up('phone', e.target.value)} placeholder="0300 1234567" /><Phone className="lead" /></div>
+                </div>
+                <div className="field">
+                  <label className="label">Password</label>
+                  <div className="input-wrap">
+                    <input className="input has-icon" type={showPass ? 'text' : 'password'} autoComplete="current-password" value={form.password} onChange={(e) => up('password', e.target.value)} placeholder="Your password" />
+                    <button type="button" onClick={() => setShowPass((v) => !v)} aria-label="Toggle password visibility" style={{ position: 'absolute', right: 12, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', display: 'flex' }}>{showPass ? <EyeOff size={17} /> : <Eye size={17} />}</button>
+                  </div>
+                </div>
+                <button className="btn btn-primary btn-lg btn-full" disabled={loading}>{loading ? 'Signing in…' : <>Sign In <ArrowRight size={16} /></>}</button>
+                <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+                  New provider? <button type="button" onClick={() => switchMode('register')} style={{ background: 'none', border: 'none', color: 'var(--yellow)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>Apply for an account</button>
+                </div>
+              </form>
+            )}
+
+            {mode === 'register' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+                {step === 0 && (
+                  <>
+                    <div className="field"><label className="label">Full legal name</label><input className="input" value={form.fullName} onChange={(e) => up('fullName', e.target.value)} placeholder="Your full name" autoComplete="name" /></div>
+                    <div className="field"><label className="label">Phone number</label><input className="input" type="tel" inputMode="tel" value={form.phone} onChange={(e) => up('phone', e.target.value)} placeholder="0300 1234567" autoComplete="tel" /></div>
+                    <div className="form-grid-2">
+                      <div className="field"><label className="label">Password</label><input className="input" type={showPass ? 'text' : 'password'} value={form.password} onChange={(e) => up('password', e.target.value)} placeholder="Min. 8 characters" autoComplete="new-password" /></div>
+                      <div className="field"><label className="label">Confirm password</label><input className="input" type={showPass ? 'text' : 'password'} value={form.confirm} onChange={(e) => up('confirm', e.target.value)} autoComplete="new-password" /></div>
+                    </div>
+                    <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 12.5, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                      <input type="checkbox" checked={showPass} onChange={(e) => setShowPass(e.target.checked)} style={{ accentColor: 'var(--yellow)' }} /> Show passwords
+                    </label>
+                  </>
+                )}
+                {step === 1 && (
+                  <>
+                    <div className="field"><label className="label">Business / workshop name</label><input className="input" value={form.businessName} onChange={(e) => up('businessName', e.target.value)} placeholder="Your business name" /></div>
+                    <div className="form-grid-2">
+                      <div className="field"><label className="label">Service specialization</label>
+                        <select className="select" value={form.serviceType} onChange={(e) => up('serviceType', e.target.value)}><option value="">Select</option>{SERVICE_TYPES.map((t) => <option key={t}>{t}</option>)}</select></div>
+                      <div className="field"><label className="label">Business type</label>
+                        <select className="select" value={form.businessType} onChange={(e) => up('businessType', e.target.value)}><option value="">Select</option>{BUSINESS_TYPES.map((t) => <option key={t}>{t}</option>)}</select></div>
+                    </div>
+                    <div className="field"><label className="label">Experience</label>
+                      <select className="select" value={form.experience} onChange={(e) => up('experience', e.target.value)}><option value="">Select</option>{EXPERIENCE.map((t) => <option key={t}>{t}</option>)}</select></div>
+                    <div className="field"><label className="label">Workshop address</label><input className="input" value={form.address} onChange={(e) => up('address', e.target.value)} placeholder="Street, area, city" /></div>
+                  </>
+                )}
+                {step === 2 && (
+                  <>
+                    <div className="field"><label className="label">National identity number (CNIC)</label><input className="input" style={{ fontFamily: 'var(--font-mono)' }} value={form.nationalId} onChange={(e) => up('nationalId', e.target.value)} placeholder="00000-0000000-0" /></div>
+                    <div className="form-grid-2">
+                      <button type="button" onClick={() => docRef.current?.click()} className="panel-inner" style={{ padding: '22px 14px', border: '1px dashed var(--border)', cursor: 'pointer', color: 'inherit', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, textAlign: 'center' }}>
+                        <FileText size={24} color={form.documentName ? 'var(--yellow)' : 'var(--text-muted)'} />
+                        <span style={{ fontSize: 13, fontWeight: 600, overflowWrap: 'anywhere' }}>{form.documentName || 'Upload trade licence / ID'}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>PDF, PNG or JPG · 15MB</span>
+                      </button>
+                      <button type="button" onClick={() => photoRef.current?.click()} className="panel-inner" style={{ padding: form.photo ? 0 : '22px 14px', minHeight: 116, overflow: 'hidden', border: '1px dashed var(--border)', cursor: 'pointer', color: 'inherit', fontFamily: 'inherit', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, textAlign: 'center' }}>
+                        {form.photo
+                          // eslint-disable-next-line @next/next/no-img-element
+                          ? <img src={form.photo} alt="Profile" style={{ width: '100%', height: 116, objectFit: 'cover' }} />
+                          : <><Camera size={24} color="var(--text-muted)" /><span style={{ fontSize: 13, fontWeight: 600 }}>Profile photo</span><span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Optional</span></>}
+                      </button>
+                    </div>
+                    <input ref={docRef} type="file" accept=".pdf,image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) { if (f.size > 15 * 1024 * 1024) setError('Document must be under 15MB.'); else up('documentName', f.name); } e.target.value = ''; }} />
+                    <input ref={photoRef} type="file" accept="image/*" hidden onChange={(e) => { onPhoto(e.target.files?.[0]); e.target.value = ''; }} />
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 12.5, color: 'var(--text-muted)' }}><Lock size={14} /> Your documents are used only for verification.</div>
+                  </>
+                )}
+
+                <div style={{ display: 'flex', gap: 12 }}>
+                  {step > 0 && <button className="btn btn-ghost btn-lg" onClick={() => { setError(''); setStep(step - 1); }}><ArrowLeft size={16} /> Back</button>}
+                  {step < 2
+                    ? <button className="btn btn-primary btn-lg" style={{ flex: 1 }} onClick={next}>Continue <ArrowRight size={16} /></button>
+                    : <button className="btn btn-primary btn-lg" style={{ flex: 1 }} disabled={loading} onClick={submit}>{loading ? 'Submitting…' : 'Submit Application'}</button>}
+                </div>
+                {hasAccount && (
+                  <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+                    Already registered? <button type="button" onClick={() => switchMode('login')} style={{ background: 'none', border: 'none', color: 'var(--yellow)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', fontSize: 13 }}>Sign in</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </main>
+
+      <footer style={{ padding: '18px 24px 26px', textAlign: 'center', fontSize: 11.5, color: 'var(--text-muted)', display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
+        <Clock size={12} /> © {new Date().getFullYear()} RepairEase · Service Provider Portal
+      </footer>
     </div>
   );
 }
