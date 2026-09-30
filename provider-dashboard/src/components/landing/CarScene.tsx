@@ -175,7 +175,8 @@ function ExplodedCar() {
   useFrame((state, dt) => {
     const t = state.clock.elapsedTime;
     const narrow = size.width < 768;
-    e.current = THREE.MathUtils.damp(e.current, story.explode, 5, dt);
+    const burst = story.burst;
+    e.current = THREE.MathUtils.damp(e.current, Math.max(story.explode, burst), burst > 0.02 ? 9 : 5, dt);
     const ex = e.current;
 
     for (const p of rig.parts) {
@@ -219,8 +220,9 @@ function ExplodedCar() {
       g.position.y = 0.7 * smooth(ex) + Math.sin(d * 3) * 0.14 + Math.sin(t * 0.8) * 0.035 - lean.current.vel * 0.18;
       g.position.z = Math.cos(d * 1.5) * 0.9 * (1 - ex);
       const out = smooth(story.carOut);
-      g.position.x -= out * 11;
-      g.rotation.y += out * 0.9;
+      g.position.y += out * 16 + story.drop * 18; // leaves upward / falls in from above
+      g.rotation.x += out * 0.5 + story.drop * 0.9;
+      g.rotation.y += out * 0.9 + story.drop * 2.2;
       g.visible = out < 0.995;
       g.scale.setScalar((narrow ? 0.5 : 1) * (1 - out * 0.35));
     }
@@ -230,7 +232,7 @@ function ExplodedCar() {
       stage.current.position.y = -g.position.y / g.scale.x + 0.012;
       stage.current.rotation.y = -g.rotation.y * 0.5; // counter-rotate a little so the rings feel anchored
     }
-    if (ringA.current) ringA.current.rotation.z = t * 0.12;
+    if (ringA.current) { ringA.current.rotation.z = t * 0.12; ringA.current.scale.setScalar(1 + story.impact * 0.7); }
     if (ringB.current) {
       ringB.current.rotation.z = -t * 0.08;
       (ringB.current.material as THREE.MeshBasicMaterial).opacity = 0.35 + Math.sin(t * 1.6) * 0.15;
@@ -238,6 +240,7 @@ function ExplodedCar() {
 
     const camZ = story.camZ * (narrow ? 1.35 : 1);
     camera.position.set(lean.current.px * 0.5, 2.6 + ex * 1.2 + lean.current.py * 0.25, camZ - lean.current.vel * 0.6);
+    if (story.shake > 0.001) camera.position.add(new THREE.Vector3((Math.random() - 0.5) * story.shake * 0.18, (Math.random() - 0.5) * story.shake * 0.18, 0));
     camera.lookAt(0, (narrow ? -1.5 : 0.35) + ex * 0.6, 0); // on phones aim lower so the car sits above the copy
   });
 
@@ -342,7 +345,7 @@ function AirConditioner() {
     }
 
     const d = story.drift * Math.PI * 2;
-    g.position.set((narrow ? 0 : 2.15) + (1 - a) * 11, (narrow ? 1.7 : 1.15) + Math.sin(t * 0.9) * 0.09 + Math.sin(d * 3) * 0.1, 0);
+    g.position.set(narrow ? 0 : 2.15, (narrow ? 1.7 : 1.15) + (1 - a) * 11 + Math.sin(t * 0.9) * 0.09 + Math.sin(d * 3) * 0.1, 0);
     g.rotation.y = -0.5 + a * 0.3 + Math.sin(d * 2.5) * 0.3 + pointer.x * 0.35 + (1 - a) * 1.2;
     g.rotation.x = pointer.y * -0.1;
     g.scale.setScalar((narrow ? 0.62 : 1) * (0.5 + 0.5 * a));

@@ -81,11 +81,26 @@ export default function Landing() {
     }
   }, [progress, active]);
 
+  // Intro: the car drops from above, bursts into parts on impact, then reassembles.
+  useEffect(() => {
+    if (!introDone || story.drop === 0) return;
+    document.body.style.overflow = 'hidden';
+    const tl = gsap.timeline({ onComplete: () => { document.body.style.overflow = ''; } });
+    tl.to(story, { drop: 0, duration: 1.3, ease: 'power2.in' })
+      .to(story, { burst: 1, impact: 1, shake: 1, duration: 0.55, ease: 'power3.out' })
+      .to(story, { shake: 0, duration: 0.8, ease: 'power2.out' }, '<')
+      .to({}, { duration: 0.4 })
+      .to(story, { burst: 0, duration: 1.7, ease: 'power2.inOut' })
+      .to(story, { impact: 0, duration: 1.4, ease: 'power2.out' }, '<');
+    return () => { tl.kill(); document.body.style.overflow = ''; };
+  }, [introDone]);
+
   useLayoutEffect(() => {
     gsap.registerPlugin(ScrollTrigger);
     const desktop = window.matchMedia('(min-width: 768px)').matches;
     const heroX = desktop ? 3.2 : 0; // car sits right of the hero copy on desktop
     story.explode = 0; story.rotY = -0.55; story.camZ = 12.5; story.x = heroX;
+    story.drop = window.scrollY < 200 ? 1 : 0; story.burst = 0; story.shake = 0; story.impact = 0;
 
     const ctx = gsap.context(() => {
       // Whole-page tracker: drives the car's background travel + a velocity lean while scrolling.

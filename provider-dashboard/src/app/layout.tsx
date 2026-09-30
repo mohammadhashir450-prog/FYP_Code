@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { ToastProvider } from '@/components/ToastProvider';
 import { AuthProvider } from '@/components/AuthProvider';
+import { BookingProvider } from '@/lib/booking';
 import PieMenu from '@/components/PieMenu';
 import QuickPie from '@/components/QuickPie';
 
@@ -32,9 +33,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <AuthProvider>
           <ToastProvider>
+            <BookingProvider>
             {children}
             <PieMenu />
             <QuickPie />
+            </BookingProvider>
           </ToastProvider>
         </AuthProvider>
       </body>

@@ -22,6 +22,10 @@ const SERVICES = [
   { icon: Gauge, title: 'Suspension & Brakes', desc: 'Safety-critical inspection' },
 ];
 
+const SPY = ['process', 'climate', 'services', 'join'];
+const ISLAND: Record<string, [string, string]> = {
+  top: ['00', 'Welcome'], process: ['01', 'Disassembly'], climate: ['04', 'Climate Control'], services: ['05', 'Services'], join: ['06', 'Get started'],
+};
 const RING = 2 * Math.PI * 27; // logo progress ring circumference
 
 /**
@@ -57,9 +61,9 @@ export default function Navbar() {
       last.current = y;
 
       let current = 'top';
-      for (const l of LINKS) {
-        const el = l.id === 'top' ? null : document.getElementById(l.id);
-        if (el && el.getBoundingClientRect().top <= window.innerHeight * 0.5) current = l.id;
+      for (const id of SPY) {
+        const el = document.getElementById(id);
+        if (el && el.getBoundingClientRect().top <= window.innerHeight * 0.5) current = id;
       }
       setActive(current);
       ticking = false;
@@ -105,6 +109,19 @@ export default function Navbar() {
   const openMega = () => { if (closeTimer.current) clearTimeout(closeTimer.current); setMega(true); };
   const closeMegaSoon = () => { closeTimer.current = setTimeout(() => setMega(false), 180); };
 
+  const compact = mode === 'down'; // scrolling down → the bar condenses into a floating island
+  const label = ISLAND[active] ?? ISLAND.top;
+
+  const spot = (e: React.MouseEvent<HTMLElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty('--sx', `${e.clientX - r.left}px`);
+  };
+  const magnet = (e: React.MouseEvent<HTMLElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.transform = `translate(${(e.clientX - r.left - r.width / 2) * 0.18}px, ${(e.clientY - r.top - r.height / 2) * 0.3}px)`;
+  };
+  const unmagnet = (e: React.MouseEvent<HTMLElement>) => { e.currentTarget.style.transform = ''; };
+
   const skin: Record<Mode, string> = {
     top: 'bg-navy/55 backdrop-blur-xl shadow-[0_10px_50px_rgba(0,0,0,.3)]',
     down: 'bg-navy/90 backdrop-blur-2xl shadow-[0_16px_60px_rgba(0,0,0,.65)]',
@@ -121,11 +138,14 @@ export default function Navbar() {
         .nb-border.nb-top { --a: .5; }
         .nb-shine::after { content: ''; position: absolute; inset: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.65), transparent); animation: nb-shine 3.6s ease-in-out infinite; }
         .nb-mega { animation: nb-in .25s ease both; }
+        @keyframes nb-swap { from { opacity: 0; transform: translateY(10px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+        .nb-swap { animation: nb-swap .45s cubic-bezier(.2,.9,.25,1) both; }
         @media (prefers-reduced-motion: reduce) { .nb-border, .nb-shine::after { animation: none; } }
       `}</style>
 
-      <div className={`nb-border pointer-events-auto mx-auto max-w-[1400px] rounded-[18px] p-px transition-all duration-500 ${mode === 'top' ? 'nb-top' : ''}`}>
-        <nav aria-label="Main" className={`relative flex items-center justify-between rounded-[17px] px-3 transition-all duration-500 md:px-5 ${mode === 'top' ? 'h-[76px]' : 'h-[62px]'} ${skin[mode]}`}>
+      <div className={`nb-border pointer-events-auto mx-auto ${compact ? 'max-w-[760px]' : 'max-w-[1400px]'} rounded-[18px] p-px transition-all duration-700 ease-[cubic-bezier(.2,.9,.25,1)] ${mode === 'top' ? 'nb-top' : ''}`}>
+        <nav aria-label="Main" onMouseMove={spot} className={`relative flex items-center justify-between rounded-[17px] px-3 transition-all duration-500 md:px-5 ${mode === 'top' ? 'h-[76px]' : compact ? 'h-[56px]' : 'h-[62px]'} ${skin[mode]}`}>
+          <span aria-hidden className="pointer-events-none absolute inset-0 rounded-[17px] opacity-70" style={{ background: 'radial-gradient(220px circle at var(--sx, 50%) 0%, rgba(255,214,10,.16), transparent 70%)' }} />
           <span aria-hidden className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
 
           {/* Brand + scroll ring */}
@@ -139,14 +159,14 @@ export default function Navbar() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.png" alt="" width={40} height={40} className={`relative rounded-xl bg-white p-0.5 transition-all duration-500 group-hover:rotate-[-5deg] group-hover:scale-110 ${mode === 'top' ? 'h-10 w-10' : 'h-9 w-9'}`} />
             </span>
-            <span className="hidden leading-none sm:block">
+            <span className={`${compact ? 'hidden' : 'hidden sm:block'} leading-none`}>
               <span className="block font-display text-[18px] font-bold tracking-[0.24em] text-brand">REPAIREASE</span>
               <span className="mt-1.5 block font-mono text-[8px] font-semibold uppercase tracking-[0.38em] text-mist-dim">Provider Platform</span>
             </span>
           </Link>
 
           {/* Centre links */}
-          <ul ref={listRef} className="absolute left-1/2 z-10 hidden -translate-x-1/2 list-none items-center gap-0.5 rounded-full border border-white/10 bg-navy/50 p-1 backdrop-blur lg:flex">
+          <ul ref={listRef} className={`absolute left-1/2 z-10 hidden -translate-x-1/2 list-none items-center gap-0.5 rounded-full border border-white/10 bg-navy/50 p-1 backdrop-blur ${compact ? 'lg:hidden' : 'lg:flex'}`}>
             <span aria-hidden className="absolute bottom-1 top-1 rounded-full bg-brand/15 ring-1 ring-brand/40 transition-all duration-500 ease-[cubic-bezier(.4,0,.2,1)]" style={{ left: pill.x, width: pill.w }} />
             {LINKS.map((l) => (
               <li key={l.id} data-id={l.id} className="relative" ref={l.mega ? megaWrap : undefined} onMouseEnter={l.mega ? openMega : undefined} onMouseLeave={l.mega ? closeMegaSoon : undefined}>
@@ -183,8 +203,18 @@ export default function Navbar() {
             ))}
           </ul>
 
+          {/* Island label (visible while condensed) */}
+          <div aria-live="polite" className={`pointer-events-none absolute left-1/2 z-10 hidden -translate-x-1/2 items-center gap-3 transition-all duration-500 lg:flex ${compact ? 'opacity-100' : 'translate-y-2 opacity-0'}`}>
+            <span key={active} className="nb-swap flex items-center gap-3">
+              <span className="font-mono text-[10px] font-bold tracking-[0.3em] text-brand">{label[0]}</span>
+              <span className="h-3 w-px bg-white/20" />
+              <span className="font-display text-[15px] font-semibold tracking-wide text-ink">{label[1]}</span>
+            </span>
+          </div>
+
           {/* Right */}
           <div className="relative z-10 flex items-center gap-2 md:gap-3">
+            <div className={compact ? 'hidden' : 'contents'}>
             {isAuthenticated && user ? (
               <Link href="/dashboard" className="hidden items-center gap-2.5 rounded-full border border-white/10 bg-navy/50 py-1 pl-1 pr-4 no-underline transition hover:border-brand/50 sm:flex">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-brand-light to-brand font-mono text-[11px] font-bold text-navy">{user.initials}</span>
@@ -193,7 +223,8 @@ export default function Navbar() {
             ) : (
               <Link href="/login" className="hidden rounded-lg px-3 py-2 font-mono text-[10.5px] font-semibold uppercase tracking-[0.2em] text-mist no-underline transition hover:text-white md:block">Sign in</Link>
             )}
-            <Link href={isAuthenticated ? '/dashboard' : '/login'} className="nb-shine group relative flex items-center gap-1.5 overflow-hidden rounded-xl bg-gradient-to-br from-brand-light via-brand to-[#e6bf00] px-4 py-2.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.16em] text-navy no-underline shadow-[0_6px_26px_rgba(255,214,10,.32)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_36px_rgba(255,214,10,.5)]">
+            </div>
+            <Link href={isAuthenticated ? '/dashboard' : '/login'} onMouseMove={magnet} onMouseLeave={unmagnet} className="nb-shine group relative flex items-center gap-1.5 overflow-hidden rounded-xl bg-gradient-to-br from-brand-light via-brand to-[#e6bf00] px-4 py-2.5 font-mono text-[10.5px] font-bold uppercase tracking-[0.16em] text-navy no-underline shadow-[0_6px_26px_rgba(255,214,10,.32)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_36px_rgba(255,214,10,.5)]">
               <span className="relative z-10 hidden sm:inline">{isAuthenticated ? 'Dashboard' : 'Provider Portal'}</span>
               <span className="relative z-10 sm:hidden">Portal</span>
               <ArrowUpRight size={14} strokeWidth={2.6} className="relative z-10 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
