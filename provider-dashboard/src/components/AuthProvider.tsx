@@ -54,7 +54,7 @@ interface AuthContextValue {
 const ACCOUNT_KEY = 'repairease.account';
 const SESSION_KEY = 'repairease.session';
 
-/** Digits only, last 10 — so 0300-1234567, +92 300 1234567 and 3001234567 all match. */
+/** Digits only, last 10 - so 0300-1234567, +92 300 1234567 and 3001234567 all match. */
 export const phoneKey = (p: string) => p.replace(/\D/g, '').slice(-10);
 
 async function hash(text: string) {
