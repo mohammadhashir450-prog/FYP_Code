@@ -6,18 +6,19 @@ import { useProgress } from '@react-three/drei';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { story } from '@/lib/explodeState';
+import { CAR_ISSUES, APPLIANCES, LOCAL_CARS } from '@/lib/profile';
 import Navbar from './Navbar';
 import IntroSplash from './IntroSplash';
 
 const CarScene = dynamic(() => import('./CarScene'), { ssr: false });
 
 const SERVICES = [
-  { t: 'Engine & Diagnostics', d: 'Computer diagnostics and full engine service at your door.' },
-  { t: 'Body & Paint', d: 'Panels, dents and finish restored to showroom standard.' },
-  { t: 'Tyres & Wheels', d: 'Balancing, alignment and replacement — mobile or in-shop.' },
-  { t: 'Electrical & ECU', d: 'Wiring, sensors and control-unit repair by specialists.' },
-  { t: 'Climate Control', d: 'AC servicing, gas refills and cabin comfort systems.' },
-  { t: 'Suspension & Brakes', d: 'Safety-critical work, inspected and guaranteed.' },
+  { t: 'Engine, Tuning & CNG', d: 'Misfire, high fuel use, injector cleaning and CNG/LPG kit tuning for Mehran, Cultus, Corolla and more.' },
+  { t: 'Suspension for rough roads', d: "Shock absorbers, bushes and ball joints — built for Pakistan's broken roads and speed breakers." },
+  { t: 'Car AC & Battery', d: 'Gas refill, compressor, dead battery, self-starter and alternator at your doorstep.' },
+  { t: 'Home AC & Refrigerator', d: 'Split/window AC, fridge and deep-freezer cooling, gas leaks and compressor faults.' },
+  { t: 'Geyser, UPS & Water Pump', d: 'Gas geyser pilot issues, UPS/inverter batteries, pump motors and stabilisers.' },
+  { t: 'Electrician & Appliances', d: 'Wiring, breaker tripping, fans, washing machines, microwaves and LED TVs.' },
 ];
 
 const PARTS = [
@@ -28,6 +29,7 @@ const PARTS = [
 ];
 
 export default function Landing() {
+  const [issueTab, setIssueTab] = useState<'car' | 'home'>('car');
   const storyRef = useRef<HTMLDivElement>(null);
   const zoneRef = useRef<HTMLDivElement>(null);
   const climateRef = useRef<HTMLDivElement>(null);
@@ -186,6 +188,31 @@ export default function Landing() {
                   <p className="mt-2 text-sm leading-relaxed text-mist-dim">{s.d}</p>
                 </div>
               ))}
+            </div>
+            {/* common problems */}
+            <div className="reveal mt-8 rounded-2xl border border-steel/50 bg-navy/70 p-5 backdrop-blur-md">
+              <div className="mb-4 flex gap-2">
+                {([['car', 'Car problems'], ['home', 'Home appliances']] as const).map(([id, label]) => (
+                  <button key={id} onClick={() => setIssueTab(id)} className={`rounded-full border bg-transparent px-4 py-1.5 font-mono text-[10.5px] font-semibold uppercase tracking-[0.18em] transition ${issueTab === id ? 'border-brand bg-brand/15 text-brand' : 'border-white/10 text-mist hover:text-white'}`}>{label}</button>
+                ))}
+              </div>
+              {issueTab === 'car' ? (
+                <>
+                  <div className="flex flex-wrap gap-2">
+                    {CAR_ISSUES.map((c) => <span key={c.title} title={c.desc} className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[12px] text-ink">{c.title}</span>)}
+                  </div>
+                  <p className="mt-4 text-[11.5px] leading-relaxed text-mist-dim">Popular: {LOCAL_CARS.join(' · ')}</p>
+                </>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {APPLIANCES.map((a) => (
+                    <div key={a.name}>
+                      <div className="text-[12.5px] font-semibold text-brand">{a.name}</div>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">{a.issues.slice(0, 4).map((i) => <span key={i} className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] text-mist">{i}</span>)}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="reveal mt-10 flex flex-wrap gap-4">
               <Link href="/login" className="no-underline rounded-xl bg-gradient-to-br from-brand-light to-brand px-7 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-navy shadow-[0_8px_30px_rgba(255,214,10,.3)] transition hover:-translate-y-0.5">Open provider portal</Link>

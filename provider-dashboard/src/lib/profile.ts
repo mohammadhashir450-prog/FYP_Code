@@ -1,15 +1,79 @@
 import type { Profile } from '@/components/AuthProvider';
 
-export const SERVICE_TYPES = [
-  'Master Auto Mechanic',
-  'Automotive Diagnostics & Engineering',
-  'Automotive Electrical & ECU Specialist',
-  'Tyre & Wheel Balancing',
-  'HVAC & Climate Control',
-  'Bodywork & Paint',
-  'Generator & Power Systems',
-  'Heavy Machinery Repair',
-  'Other Accredited Service',
+/** Specializations a provider can register under, grouped for <optgroup> selects. */
+export const SERVICE_GROUPS = [
+  {
+    label: 'Car repair',
+    items: [
+      'Master Auto Mechanic',
+      'Engine Tuning & Diagnostics',
+      'Car AC & Cooling',
+      'Suspension, Steering & Alignment',
+      'Auto Electrician & ECU',
+      'Denting, Painting & Polish',
+      'CNG / LPG Kit Specialist',
+      'Tyre & Wheel Balancing',
+    ],
+  },
+  {
+    label: 'Home appliances',
+    items: [
+      'Air Conditioner (Split / Window)',
+      'Refrigerator & Deep Freezer',
+      'Washing Machine',
+      'Geyser (Gas / Electric)',
+      'UPS, Inverter & Battery',
+      'Water Pump & Motor',
+      'Fans, Microwave & Small Appliances',
+      'LED TV & Electronics',
+      'Electrician (Wiring & DB)',
+    ],
+  },
+  { label: 'Other', items: ['Generator & Power Systems', 'Heavy Machinery Repair', 'Other Accredited Service'] },
+];
+export const SERVICE_TYPES = SERVICE_GROUPS.flatMap((g) => g.items);
+
+/** Common vehicles on Pakistani roads. */
+export const LOCAL_CARS = [
+  'Suzuki Mehran / Alto / Cultus / Wagon R / Swift',
+  'Toyota Corolla / Yaris / Vitz / Hilux',
+  'Honda City / Civic / BR-V',
+  'Changan Alsvin / Oshan X7',
+  'KIA Sportage / Picanto',
+  'Hyundai Tucson / Elantra',
+  'Daihatsu Mira / Cuore',
+];
+
+/** Everyday car problems (local conditions: heat, dust, broken roads, CNG, weak batteries). */
+export const CAR_ISSUES = [
+  { title: 'AC not cooling / gas refill', desc: 'Weak cooling in summer heat, compressor, condenser and blower faults.' },
+  { title: 'Battery dead & self-starter', desc: 'Jump start, battery replacement, starter motor and alternator charging.' },
+  { title: 'Overheating & coolant leak', desc: 'Radiator, water pump, thermostat and fan relay problems.' },
+  { title: 'Suspension noise on rough roads', desc: 'Shock absorbers, bushes, ball joints, links and stabiliser rubbers.' },
+  { title: 'Clutch plate & gearbox', desc: 'Slipping or hard clutch, pressure plate, auto transmission jerks.' },
+  { title: 'Brake pads, discs & ABS light', desc: 'Squealing brakes, spongy pedal, ABS sensor faults.' },
+  { title: 'Engine tuning & high fuel use', desc: 'Misfire, low mileage, injector cleaning, spark plugs, throttle body.' },
+  { title: 'CNG / LPG kit tuning & leakage', desc: 'Kit calibration, regulator, cylinder fitness and leak checks.' },
+  { title: 'Steering & wheel alignment', desc: 'Pulling to one side, vibration, tie-rod ends, balancing.' },
+  { title: 'Tyre puncture & replacement', desc: 'Puncture repair, tyre change, nitrogen fill and rim repair.' },
+  { title: 'Dent, paint & polish', desc: 'Dents from traffic, scratches, full paint and ceramic polish.' },
+  { title: 'Wiring, power windows & central lock', desc: 'Short circuits, window regulators, door lock actuators, lights.' },
+  { title: 'Check-engine light / ECU scan', desc: 'Computerised diagnosis, sensor replacement and ECU reset.' },
+  { title: 'Timing belt & oil service', desc: 'Scheduled service, engine oil, filters and belt replacement.' },
+];
+
+/** Appliances found in most Pakistani homes and their usual faults. */
+export const APPLIANCES = [
+  { name: 'Air Conditioner', issues: ['Not cooling', 'Gas leak / refill', 'Water dripping indoors', 'Compressor / capacitor', 'Inverter PCB error', 'Noisy outdoor fan'] },
+  { name: 'Refrigerator & Deep Freezer', issues: ['Not cooling', 'Frost build-up', 'Compressor relay / overload', 'Door gasket', 'Water leakage', 'Noise'] },
+  { name: 'Washing Machine', issues: ['Motor / spinner', 'Drain pump', 'Belt slipping', 'Not spinning', 'Water inlet valve', 'PCB / timer'] },
+  { name: 'Geyser (Gas / Electric)', issues: ['Pilot not lighting', 'Thermostat', 'Gas leakage', 'Heating element burnt', 'Low water pressure', 'Instant geyser tripping'] },
+  { name: 'UPS, Inverter & Battery', issues: ['Not charging', 'Continuous beeping', 'Battery replacement', 'Overload trip', 'Stabiliser / AVR', 'Solar hybrid setup'] },
+  { name: 'Water Pump & Motor', issues: ['Not lifting water', 'Winding burnt', 'Capacitor', 'Pressure switch', 'Leakage', 'Booster pump'] },
+  { name: 'Fans, Microwave & Small Appliances', issues: ['Ceiling fan slow / noisy', 'Pedestal fan', 'Microwave not heating', 'Iron / kettle', 'Blender / juicer', 'Gas stove'] },
+  { name: 'Water Dispenser & Cooler', issues: ['Not cooling / heating', 'Tap leakage', 'Compressor', 'Tank cleaning'] },
+  { name: 'LED / LCD TV', issues: ['No display / backlight', 'Panel damage', 'HDMI / sound', 'Power board', 'Remote / software'] },
+  { name: 'Home Electrician', issues: ['Wiring & rewiring', 'Breaker / DB tripping', 'Short circuit', 'Sockets & switches', 'Load-shedding changeover', 'Earthing & LED lights'] },
 ];
 
 export const BUSINESS_TYPES = ['Individual / Freelancer', 'Sole Proprietorship', 'Partnership', 'Private Limited Company', 'Workshop / Garage'];

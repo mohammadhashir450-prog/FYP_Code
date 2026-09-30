@@ -8,7 +8,7 @@ import {
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth, Profile, phoneKey } from '@/components/AuthProvider';
 import { useToast } from '@/components/ToastProvider';
-import { BIO_LIMIT, BUSINESS_TYPES, CURRENCIES, EXPERIENCE, SERVICE_TYPES, completeness, fileToDataUrl, memberSince } from '@/lib/profile';
+import { BIO_LIMIT, BUSINESS_TYPES, CURRENCIES, EXPERIENCE, SERVICE_GROUPS, CAR_ISSUES, APPLIANCES, completeness, fileToDataUrl, memberSince } from '@/lib/profile';
 
 const TABS = [
   { id: 'general', label: 'General Profile', icon: UserRound },
@@ -97,7 +97,7 @@ function ProfileEditor() {
   const docRef = useRef<HTMLInputElement>(null);
 
   const set = <K extends keyof Profile>(k: K, v: Profile[K]) => setDraft((d) => ({ ...d, [k]: v }));
-  const dirty = (Object.keys(draft) as (keyof Profile)[]).some((k) => k !== 'online' && draft[k] !== profile[k]);
+  const dirty = (Object.keys(draft) as (keyof Profile)[]).some((k) => k !== 'online' && JSON.stringify(draft[k]) !== JSON.stringify(profile[k]));
   const activeTab = TABS.some((t) => t.id === tab) ? tab : 'general';
 
   const save = async () => {
@@ -215,7 +215,7 @@ function ProfileEditor() {
                 <Field label="Service specialization">
                   <select className="select" value={draft.serviceType} onChange={(e) => set('serviceType', e.target.value)}>
                     <option value="">Select specialization</option>
-                    {SERVICE_TYPES.map((t) => <option key={t}>{t}</option>)}
+                    {SERVICE_GROUPS.map((g) => <optgroup key={g.label} label={g.label}>{g.items.map((t) => <option key={t}>{t}</option>)}</optgroup>)}
                   </select>
                 </Field>
                 <Field label="Experience">
@@ -224,6 +224,28 @@ function ProfileEditor() {
                     {EXPERIENCE.map((t) => <option key={t}>{t}</option>)}
                   </select>
                 </Field>
+              </div>
+              <div className="field">
+                <label className="label">Issues you handle</label>
+                {[
+                  { title: 'Car problems', items: CAR_ISSUES.map((c) => c.title) },
+                  { title: 'Home appliances', items: APPLIANCES.flatMap((a) => a.issues.map((i) => `${a.name}: ${i}`)) },
+                ].map((g) => (
+                  <div key={g.title} style={{ marginTop: 10 }}>
+                    <div className="eyebrow eyebrow-muted" style={{ marginBottom: 8, fontSize: 9.5 }}>{g.title}</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {g.items.map((it) => {
+                        const on = (draft.skills ?? []).includes(it);
+                        return (
+                          <button key={it} type="button" onClick={() => set('skills', on ? (draft.skills ?? []).filter((x) => x !== it) : [...(draft.skills ?? []), it])}
+                            style={{ padding: '7px 12px', borderRadius: 999, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit', border: `1px solid ${on ? 'var(--yellow)' : 'var(--border)'}`, background: on ? 'rgba(255,214,10,.12)' : 'rgba(4,18,41,.6)', color: on ? 'var(--yellow)' : 'var(--text-secondary)' }}>
+                            {it}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
               <Field label="Workshop address" icon={MapPin}><input className="input has-icon" value={draft.address} onChange={(e) => set('address', e.target.value)} placeholder="Street, area, city" /></Field>
               <Field label="Service area / coverage"><input className="input" value={draft.serviceArea} onChange={(e) => set('serviceArea', e.target.value)} placeholder="e.g. Lahore — DHA, Gulberg, Johar Town" /></Field>

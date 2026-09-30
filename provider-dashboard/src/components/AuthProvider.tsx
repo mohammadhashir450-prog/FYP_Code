@@ -22,6 +22,7 @@ export interface Profile {
   serviceArea: string;
   address: string;
   currency: string;
+  skills: string[];       // issues the provider handles
   bio: string;
   documentName: string;
   verificationStatus: 'pending' | 'verified';
@@ -32,7 +33,7 @@ export interface Profile {
 export const EMPTY_PROFILE: Profile = {
   photo: '', fullName: '', designation: '', email: '', phone: '', nationalId: '',
   businessName: '', registrationNo: '', businessType: '', serviceType: '', experience: '',
-  serviceArea: '', address: '', currency: 'PKR', bio: '', documentName: '',
+  serviceArea: '', address: '', currency: 'PKR', skills: [], bio: '', documentName: '',
   verificationStatus: 'pending', online: true, createdAt: '',
 };
 
