@@ -7,6 +7,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { story } from '@/lib/explodeState';
 import Navbar from './Navbar';
+import IntroSplash from './IntroSplash';
 
 const CarScene = dynamic(() => import('./CarScene'), { ssr: false });
 
@@ -26,31 +27,17 @@ const PARTS = [
   ['Engine bay', 'One'],
 ];
 
-function Loader({ hidden }: { hidden: boolean }) {
-  const { progress } = useProgress();
-  return (
-    <div className={`fixed inset-0 z-[100] flex flex-col items-center justify-center gap-6 bg-navy transition-opacity duration-700 ${hidden ? 'pointer-events-none opacity-0' : 'opacity-100'}`}>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/logo.png" alt="RepairEase" width={72} height={72} className="h-[72px] w-[72px] rounded-2xl bg-white p-0.5 shadow-[0_0_40px_rgba(255,214,10,.3)]" />
-      <div className="w-56">
-        <div className="h-[3px] overflow-hidden rounded-full bg-white/10">
-          <div className="h-full rounded-full bg-brand transition-[width] duration-300" style={{ width: `${progress}%` }} />
-        </div>
-        <div className="mt-3 text-center font-mono text-[10px] tracking-[0.25em] text-mist-dim">LOADING 3D EXPERIENCE · {Math.round(progress)}%</div>
-      </div>
-    </div>
-  );
-}
-
 export default function Landing() {
   const storyRef = useRef<HTMLDivElement>(null);
   const zoneRef = useRef<HTMLDivElement>(null);
+  const climateRef = useRef<HTMLDivElement>(null);
   const { progress, active } = useProgress();
   const [ready, setReady] = useState(false);
+  const [introDone, setIntroDone] = useState(false);
 
   useEffect(() => {
     if (progress >= 100 && !active) {
-      const t = setTimeout(() => { setReady(true); ScrollTrigger.refresh(); }, 400);
+      const t = setTimeout(() => { setReady(true); ScrollTrigger.refresh(); }, 300);
       return () => clearTimeout(t);
     }
   }, [progress, active]);
@@ -79,6 +66,15 @@ export default function Landing() {
         .to(story, { explode: 0, rotY: -0.35, camZ: 12.5, x: desktop ? 2.4 : 0, duration: 0.28, ease: 'power3.inOut' }, 0.7) // Phase 2 — reassemble
         .set({}, {}, 1); // pad to a total length of 1
 
+      // Climate hand-over: the car drives off, the air-conditioner floats in, then the car returns for Services.
+      gsap.timeline({
+        defaults: { ease: 'none' },
+        scrollTrigger: { trigger: climateRef.current, start: 'top 85%', end: 'bottom 75%', scrub: 1.2 },
+      })
+        .to(story, { carOut: 1, ac: 1, duration: 0.2, ease: 'power2.inOut' }, 0)
+        .to(story, { carOut: 0, ac: 0, duration: 0.28, ease: 'power2.inOut' }, 0.5)
+        .set({}, {}, 1);
+
       gsap.utils.toArray<HTMLElement>('.reveal').forEach((el) => {
         gsap.fromTo(el, { y: 44, opacity: 0 }, {
           y: 0, opacity: 1, duration: 0.9, ease: 'power3.out',
@@ -92,7 +88,7 @@ export default function Landing() {
 
   return (
     <div className="relative bg-transparent text-white">
-      <Loader hidden={ready} />
+      {!introDone && <IntroSplash progress={ready ? 100 : progress} onDone={() => setIntroDone(true)} />}
 
       {/* Ambient depth layers behind the 3D canvas */}
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-0 overflow-hidden">
@@ -157,7 +153,22 @@ export default function Landing() {
 
         </div>
 
-        {/* 5 — Details */}
+        <div ref={climateRef}>
+        {/* 5 — Climate (air-conditioner model) */}
+        <section id="climate" className="flex h-screen items-end px-6 pb-14 md:items-center md:pb-0 md:pl-[8vw]">
+          <div className="reveal max-w-lg">
+            <div className="mb-4 font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-brand">04 — Climate Control</div>
+            <h2 className="font-display text-4xl font-semibold leading-tight md:text-6xl">Cool comfort, <em className="text-brand">engineered.</em></h2>
+            <p className="mt-5 max-w-md leading-relaxed text-mist">From car AC gas refills to home split-unit servicing, our specialists restore perfect airflow and temperature — fast, clean and guaranteed.</p>
+            <ul className="mt-7 grid max-w-md list-none gap-3 text-sm text-ink">
+              {['Gas refill & leak detection', 'Compressor & coil service', 'Filter, duct and vent cleaning'].map((t) => (
+                <li key={t} className="flex items-center gap-3"><span className="h-1.5 w-1.5 rounded-full bg-brand shadow-[0_0_10px_rgba(255,214,10,.8)]" />{t}</li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* 6 — Details */}
         <section id="services" className="flex min-h-screen items-center px-6 py-24 md:pl-[8vw]">
           <div className="w-full md:max-w-[46%]">
             <div className="reveal mb-4 font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-brand">04 — What we service</div>
@@ -176,6 +187,7 @@ export default function Landing() {
             </div>
           </div>
         </section>
+        </div>
       </div>
 
       <footer className="relative z-10 border-t border-steel/50 bg-navy/80 px-6 py-6 text-center font-mono text-[11px] tracking-widest text-mist-dim backdrop-blur">

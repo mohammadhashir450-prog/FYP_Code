@@ -5,7 +5,6 @@ import { Menu, Search, LogOut, UserRound, Building2, BadgeCheck, ShieldCheck, La
 import { useAuth } from './AuthProvider';
 import { useToast } from './ToastProvider';
 import { OPEN_SIDEBAR_EVENT } from './Sidebar';
-import QuickPie from './QuickPie';
 
 const PAGES = [
   { label: 'Overview', desc: 'Dashboard home', href: '/dashboard', icon: LayoutDashboard },
@@ -83,7 +82,6 @@ export default function Topbar() {
           </button>
         </div>
 
-        <div className="tb-pie" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}><QuickPie /></div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <button onClick={() => { toggleOnline(); showToast(user.online ? 'You are now offline — new requests paused' : 'You are online and accepting requests', 'info'); }}

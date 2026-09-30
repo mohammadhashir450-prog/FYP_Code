@@ -3,6 +3,7 @@ import './globals.css';
 import { ToastProvider } from '@/components/ToastProvider';
 import { AuthProvider } from '@/components/AuthProvider';
 import PieMenu from '@/components/PieMenu';
+import QuickPie from '@/components/QuickPie';
 
 export const metadata: Metadata = {
   icons: { icon: '/logo.png', apple: '/logo.png' },
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <ToastProvider>
             {children}
             <PieMenu />
+            <QuickPie />
           </ToastProvider>
         </AuthProvider>
       </body>

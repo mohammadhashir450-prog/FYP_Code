@@ -8,5 +8,7 @@ export const story = {
   camZ: 11, // camera distance
   x: 0, // horizontal shift of the car (desktop only)
   drift: 0, // 0..1 progress over the WHOLE page (background travel)
+  carOut: 0, // 0 = car on stage, 1 = car has left (Climate section)
+  ac: 0, // 0..1 air-conditioner entrance
   vel: 0, // smoothed scroll velocity (px/s) — the car leans into it
 };
