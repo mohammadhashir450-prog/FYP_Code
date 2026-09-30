@@ -98,7 +98,7 @@ function Loader() {
     <Html center>
       <div
         style={{
-          color: '#d4af37',
+          color: '#ffd60a',
           fontFamily: "'JetBrains Mono', monospace",
           fontSize: '11px',
           letterSpacing: '1.5px',
@@ -120,8 +120,8 @@ function Loader() {
             style={{
               width: `${progress}%`,
               height: '100%',
-              background: 'linear-gradient(90deg, #d4af37, #f3e5ab)',
-              boxShadow: '0 0 8px rgba(212,175,55,0.7)',
+              background: 'linear-gradient(90deg, #ffd60a, #ffe873)',
+              boxShadow: '0 0 8px rgba(255,214,10,0.7)',
               transition: 'width 0.15s ease',
             }}
           />
@@ -136,7 +136,7 @@ function Loader() {
 function GroundGrid({ y }: { y: number }) {
   return (
     <gridHelper
-      args={[40, 40, '#111827', '#0b1020']}
+      args={[40, 40, '#0f2a52', '#0b1020']}
       position={[0, y, 0]}
     />
   );
@@ -193,7 +193,7 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
         position: 'fixed',
         inset: 0,
         zIndex: 9999,
-        background: '#06080f',
+        background: '#020a18',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -211,9 +211,9 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
           inset: 0,
           pointerEvents: 'none',
           background: `
-            radial-gradient(ellipse 80% 45% at 50% 100%, rgba(212,175,55,0.09) 0%, transparent 65%),
-            radial-gradient(ellipse 50% 35% at 15% 15%, rgba(59,130,246,0.04) 0%, transparent 55%),
-            radial-gradient(ellipse 45% 30% at 85% 10%, rgba(139,92,246,0.04) 0%, transparent 55%)
+            radial-gradient(ellipse 80% 45% at 50% 100%, rgba(255,214,10,0.09) 0%, transparent 65%),
+            radial-gradient(ellipse 50% 35% at 15% 15%, rgba(43,123,214,0.04) 0%, transparent 55%),
+            radial-gradient(ellipse 45% 30% at 85% 10%, rgba(43,123,214,0.04) 0%, transparent 55%)
           `,
         }}
       />
@@ -243,25 +243,7 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
           zIndex: 20,
         }}
       >
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            background: 'linear-gradient(135deg,#d4af37 0%,#7c5a1e 100%)',
-            borderRadius: 10,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 0 28px rgba(212,175,55,0.55)',
-            border: '1px solid rgba(255,235,170,0.35)',
-            flexShrink: 0,
-          }}
-        >
-          {/* wrench icon */}
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#07090e" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
-          </svg>
-        </div>
+        <img src="/logo.png" alt="RepairEase" width={46} height={46} style={{ borderRadius: 12, background: '#fff', padding: 2, boxShadow: '0 0 28px rgba(255,214,10,0.45)', flexShrink: 0 }} />
         <div>
           <div
             style={{
@@ -279,7 +261,7 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
             style={{
               fontSize: 9,
               fontWeight: 700,
-              color: '#c5a059',
+              color: '#e6bf00',
               letterSpacing: '2.5px',
               textTransform: 'uppercase',
               fontFamily: "'JetBrains Mono', monospace",
@@ -317,11 +299,11 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
           <spotLight
             position={[0, 10, 2]}
             intensity={0.9}
-            color="#d4af37"
+            color="#ffd60a"
             angle={0.5}
             penumbra={1}
           />
-          <pointLight position={[0, -1, 4]} intensity={0.4} color="#d4af37" />
+          <pointLight position={[0, -1, 4]} intensity={0.4} color="#ffd60a" />
 
           <Suspense fallback={<Loader />}>
             <LandCruiserModel onBounds={setBounds} />
@@ -378,8 +360,8 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
                 width: 6,
                 height: 6,
                 borderRadius: '50%',
-                background: modelReady ? '#22c55e' : '#d4af37',
-                boxShadow: `0 0 8px ${modelReady ? '#22c55e' : '#d4af37'}`,
+                background: modelReady ? '#22c55e' : '#ffd60a',
+                boxShadow: `0 0 8px ${modelReady ? '#22c55e' : '#ffd60a'}`,
                 display: 'inline-block',
               }}
             />
@@ -405,7 +387,7 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
             height: 1,
             background: modelReady
               ? 'linear-gradient(90deg,rgba(34,197,94,0.6) 0%,rgba(34,197,94,0.1) 100%)'
-              : 'linear-gradient(90deg,rgba(212,175,55,0.5) 0%,rgba(212,175,55,0.08) 100%)',
+              : 'linear-gradient(90deg,rgba(255,214,10,0.5) 0%,rgba(255,214,10,0.08) 100%)',
           }}
         />
       </div>
@@ -425,11 +407,11 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
         <div
           style={{
             padding: '12px 18px',
-            background: 'rgba(5,8,14,0.88)',
+            background: 'rgba(2,10,24,0.88)',
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
-            border: '1px solid rgba(212,175,55,0.25)',
-            borderLeft: '3px solid #d4af37',
+            border: '1px solid rgba(255,214,10,0.25)',
+            borderLeft: '3px solid #ffd60a',
             borderRadius: '10px',
           }}
         >
@@ -449,7 +431,7 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
           >
             Toyota Land Cruiser 300
           </div>
-          <div style={{ fontSize: 11, color: '#c5a059', marginTop: 2 }}>
+          <div style={{ fontSize: 11, color: '#e6bf00', marginTop: 2 }}>
             VX · 2022 · Premium Service Ready
           </div>
         </div>
@@ -474,26 +456,26 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
             alignItems: 'center',
             gap: 10,
             padding: '13px 26px',
-            background: 'linear-gradient(135deg,#d4af37 0%,#b89327 100%)',
-            border: '1px solid rgba(255,235,170,0.4)',
+            background: 'linear-gradient(135deg,#ffd60a 0%,#c9a300 100%)',
+            border: '1px solid rgba(255,232,115,0.4)',
             borderRadius: 10,
-            color: '#07090e',
+            color: '#030d1f',
             fontSize: 12,
             fontWeight: 800,
             letterSpacing: '1.5px',
             cursor: 'pointer',
             textTransform: 'uppercase',
-            boxShadow: '0 6px 28px rgba(212,175,55,0.45)',
+            boxShadow: '0 6px 28px rgba(255,214,10,0.45)',
             transition: 'all 0.2s ease',
           }}
           onMouseEnter={(e) => {
             (e.currentTarget as HTMLButtonElement).style.boxShadow =
-              '0 10px 36px rgba(212,175,55,0.65)';
+              '0 10px 36px rgba(255,214,10,0.65)';
             (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)';
           }}
           onMouseLeave={(e) => {
             (e.currentTarget as HTMLButtonElement).style.boxShadow =
-              '0 6px 28px rgba(212,175,55,0.45)';
+              '0 6px 28px rgba(255,214,10,0.45)';
             (e.currentTarget as HTMLButtonElement).style.transform = 'none';
           }}
         >
@@ -503,7 +485,7 @@ export default function SplashScreen({ onComplete }: { onComplete: () => void })
             height="14"
             viewBox="0 0 24 24"
             fill="none"
-            stroke="#07090e"
+            stroke="#030d1f"
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"

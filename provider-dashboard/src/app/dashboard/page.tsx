@@ -1,644 +1,141 @@
 'use client';
-import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { ArrowRight, BadgeCheck, Building2, Clock, CircleCheck, Circle, Mail, MapPin, Phone, Radio, ShieldCheck, Wrench } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/components/AuthProvider';
+import { Avatar } from '@/components/Topbar';
+import { completeness, memberSince } from '@/lib/profile';
 
-// ── STAT CARD COMPONENT ────────────────────────────────────────────
-interface StatCardProps {
-  icon: string;
-  label: string;
-  value: string;
-  sub: string;
-  trend?: 'up' | 'down' | 'neutral';
-  trendVal?: string;
-  color: string;
-}
-
-function StatCard({ icon, label, value, sub, trend, trendVal, color }: StatCardProps) {
-  const [hovered, setHovered] = useState(false);
-  const trendColor = trend === 'up' ? '#22c55e' : trend === 'down' ? '#ef4444' : '#94a3b8';
-  const trendIcon = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '–';
-
+function Stat({ icon: Icon, label, value, sub }: { icon: typeof Clock; label: string; value: string; sub: string }) {
   return (
-    <div
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        background: hovered
-          ? 'linear-gradient(135deg, #111827 0%, #0d1520 100%)'
-          : 'linear-gradient(135deg, #0d1117 0%, #0a0e18 100%)',
-        border: `1px solid ${hovered ? color : 'rgba(255,255,255,0.07)'}`,
-        borderRadius: '14px',
-        padding: '22px 24px',
-        transition: 'all 0.25s ease',
-        boxShadow: hovered ? `0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px ${color}22` : '0 2px 12px rgba(0,0,0,0.4)',
-        cursor: 'default',
-        position: 'relative',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Subtle glow accent on hover */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '-40px',
-          right: '-40px',
-          width: '120px',
-          height: '120px',
-          background: `radial-gradient(circle, ${color}18 0%, transparent 70%)`,
-          transition: 'opacity 0.3s ease',
-          opacity: hovered ? 1 : 0,
-          pointerEvents: 'none',
-        }}
-      />
-
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-        <div
-          style={{
-            width: 42,
-            height: 42,
-            borderRadius: '10px',
-            background: `${color}15`,
-            border: `1px solid ${color}30`,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '18px',
-          }}
-        >
-          {icon}
-        </div>
-        {trendVal && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '3px 8px',
-              borderRadius: '20px',
-              background: `${trendColor}12`,
-              border: `1px solid ${trendColor}30`,
-              fontSize: '11px',
-              fontWeight: 700,
-              color: trendColor,
-              fontFamily: "'JetBrains Mono', monospace",
-            }}
-          >
-            <span>{trendIcon}</span>
-            <span>{trendVal}</span>
-          </div>
-        )}
+    <div className="panel rail" style={{ padding: '22px 24px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+        <span className="eyebrow eyebrow-muted">{label}</span>
+        <span style={{ width: 36, height: 36, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,214,10,.08)', border: '1px solid rgba(255,214,10,.2)' }}>
+          <Icon size={17} color="var(--yellow)" />
+        </span>
       </div>
-
-      <div style={{ fontSize: '26px', fontWeight: 800, color: '#f8fafc', letterSpacing: '-0.5px', marginBottom: '4px', fontFamily: "'Inter', sans-serif" }}>
-        {value}
-      </div>
-      <div style={{ fontSize: '13px', fontWeight: 600, color: '#94a3b8', marginBottom: '4px' }}>
-        {label}
-      </div>
-      <div style={{ fontSize: '11.5px', color: '#4b5563', fontFamily: "'JetBrains Mono', monospace" }}>
-        {sub}
-      </div>
+      <div className="serif" style={{ fontSize: 30, fontWeight: 600, lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>{sub}</div>
     </div>
   );
 }
 
-// ── QUICK ACTION BUTTON ────────────────────────────────────────────
-function QuickAction({ icon, label, desc, color }: { icon: string; label: string; desc: string; color: string }) {
-  const [hovered, setHovered] = useState(false);
+function Empty({ icon: Icon, title, desc }: { icon: typeof Clock; title: string; desc: string }) {
   return (
-    <button
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '14px',
-        width: '100%',
-        padding: '14px 16px',
-        background: hovered ? `${color}0d` : 'rgba(255,255,255,0.025)',
-        border: `1px solid ${hovered ? color + '50' : 'rgba(255,255,255,0.06)'}`,
-        borderRadius: '10px',
-        cursor: 'pointer',
-        transition: 'all 0.2s ease',
-        textAlign: 'left',
-      }}
-    >
-      <div
-        style={{
-          width: 36,
-          height: 36,
-          borderRadius: '8px',
-          background: `${color}18`,
-          border: `1px solid ${color}30`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: '16px',
-          flexShrink: 0,
-        }}
-      >
-        {icon}
+    <div style={{ padding: '44px 24px', textAlign: 'center' }}>
+      <div style={{ width: 52, height: 52, margin: '0 auto 16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(43,123,214,.1)', border: '1px solid rgba(43,123,214,.25)' }}>
+        <Icon size={22} color="var(--blue-soft)" />
       </div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: '13px', fontWeight: 700, color: '#f1f5f9', marginBottom: '2px' }}>{label}</div>
-        <div style={{ fontSize: '11px', color: '#6b7280' }}>{desc}</div>
-      </div>
-      <span style={{ color: '#4b5563', fontSize: '14px' }}>›</span>
-    </button>
-  );
-}
-
-// ── EMPTY STATE PLACEHOLDER ────────────────────────────────────────
-function EmptyState({ icon, title, desc }: { icon: string; title: string; desc: string }) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '48px 24px',
-        textAlign: 'center',
-        gap: '10px',
-      }}
-    >
-      <div style={{ fontSize: '32px', opacity: 0.5 }}>{icon}</div>
-      <div style={{ fontSize: '13px', fontWeight: 600, color: '#94a3b8' }}>{title}</div>
-      <div style={{ fontSize: '11.5px', color: '#4b5563', maxWidth: '220px', lineHeight: 1.6 }}>{desc}</div>
+      <div className="serif" style={{ fontSize: 18, fontWeight: 600, marginBottom: 6 }}>{title}</div>
+      <div style={{ fontSize: 13, color: 'var(--text-muted)', maxWidth: 340, margin: '0 auto', lineHeight: 1.6 }}>{desc}</div>
     </div>
   );
 }
 
-// ── SECTION CARD WRAPPER ───────────────────────────────────────────
-function SectionCard({
-  title,
-  subtitle,
-  badge,
-  badgeColor,
-  children,
-  action,
-}: {
-  title: string;
-  subtitle?: string;
-  badge?: string;
-  badgeColor?: string;
-  children: React.ReactNode;
-  action?: React.ReactNode;
-}) {
+function Detail({ icon: Icon, value }: { icon: typeof Mail; value: string }) {
+  if (!value) return null;
   return (
-    <div
-      style={{
-        background: 'linear-gradient(135deg, #0d1117 0%, #0a0e18 100%)',
-        border: '1px solid rgba(255,255,255,0.07)',
-        borderRadius: '14px',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Card Header */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '18px 22px',
-          borderBottom: '1px solid rgba(255,255,255,0.05)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div>
-            <div style={{ fontSize: '14px', fontWeight: 700, color: '#f1f5f9' }}>{title}</div>
-            {subtitle && <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '1px' }}>{subtitle}</div>}
-          </div>
-          {badge && (
-            <span
-              style={{
-                fontSize: '10px',
-                fontWeight: 700,
-                padding: '2px 8px',
-                borderRadius: '20px',
-                background: `${badgeColor || '#d4af37'}18`,
-                border: `1px solid ${badgeColor || '#d4af37'}40`,
-                color: badgeColor || '#d4af37',
-                fontFamily: "'JetBrains Mono', monospace",
-                letterSpacing: '0.5px',
-              }}
-            >
-              {badge}
-            </span>
-          )}
-        </div>
-        {action}
-      </div>
-      {children}
+    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', fontSize: 13, color: 'var(--text-secondary)' }}>
+      <Icon size={15} color="var(--text-muted)" style={{ marginTop: 2, flexShrink: 0 }} />
+      <span style={{ overflowWrap: 'anywhere' }}>{value}</span>
     </div>
   );
 }
 
-// ── MAIN DASHBOARD COMPONENT ───────────────────────────────────────
 export default function DashboardHome() {
-  const { user } = useAuth();
-  const [mounted, setMounted] = useState(false);
-  const [currentTime, setCurrentTime] = useState('');
-  const [currentDate, setCurrentDate] = useState('');
-
-  useEffect(() => {
-    setMounted(true);
-    const update = () => {
-      const now = new Date();
-      setCurrentTime(now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
-      setCurrentDate(
-        now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
-      );
-    };
-    update();
-    const t = setInterval(update, 30000);
-    return () => clearInterval(t);
-  }, []);
-
-  if (!mounted) return null;
-
+  const { profile, user } = useAuth();
+  const { percent, missing } = completeness(profile);
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good Morning' : hour < 17 ? 'Good Afternoon' : 'Good Evening';
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const firstName = (profile.fullName || user?.name || '').split(' ')[0];
+  const verified = profile.verificationStatus === 'verified';
 
   return (
     <DashboardLayout>
-      <div
-        style={{
-          background: '#080b12',
-          minHeight: '100vh',
-          padding: '28px 32px 48px',
-          fontFamily: "'Inter', sans-serif",
-          color: '#f8fafc',
-        }}
-      >
-        {/* ── WELCOME HEADER ───────────────────────────────────── */}
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-end',
-            marginBottom: '32px',
-            paddingBottom: '24px',
-            borderBottom: '1px solid rgba(255,255,255,0.05)',
-          }}
-        >
-          <div>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '6px',
-              }}
-            >
-              <span
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  background: '#22c55e',
-                  boxShadow: '0 0 8px #22c55e',
-                  display: 'inline-block',
-                  animation: 'pulse 2s infinite',
-                }}
-              />
-              <span
-                style={{
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  color: '#22c55e',
-                  letterSpacing: '1.5px',
-                  textTransform: 'uppercase',
-                  fontFamily: "'JetBrains Mono', monospace",
-                }}
-              >
-                System Operational
+      <div className="page-container animate-fadeIn">
+        <header style={{ marginBottom: 34 }}>
+          <div className="eyebrow" style={{ marginBottom: 14 }}>Provider Workspace <span style={{ color: 'var(--text-muted)' }}>· {new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span></div>
+          <h1 className="page-title">{greeting}{firstName ? ',' : ''} {firstName && <span className="gradient-text" style={{ fontStyle: 'italic' }}>{firstName}</span>}</h1>
+          <p style={{ color: 'var(--text-secondary)', marginTop: 12, fontSize: 15, maxWidth: 620, lineHeight: 1.6 }}>
+            {profile.businessName ? `Managing ${profile.businessName}. ` : ''}Keep your profile complete so customers can trust and book you.
+          </p>
+        </header>
+
+        <section className="grid-4" style={{ marginBottom: 24 }}>
+          <Stat icon={BadgeCheck} label="Verification" value={verified ? 'Verified' : 'In Review'} sub={verified ? 'Identity and documents cleared' : 'Our team is reviewing your documents'} />
+          <Stat icon={Radio} label="Availability" value={profile.online ? 'Online' : 'Offline'} sub={profile.online ? 'Accepting new requests' : 'New requests are paused'} />
+          <Stat icon={ShieldCheck} label="Profile Strength" value={`${percent}%`} sub={missing.length ? `${missing.length} item${missing.length > 1 ? 's' : ''} left to complete` : 'Profile fully complete'} />
+          <Stat icon={Clock} label="Member Since" value={memberSince(profile) || '—'} sub="Provider account created" />
+        </section>
+
+        <div className="split-main">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 22, minWidth: 0 }}>
+            {/* Profile completion */}
+            <section className="panel panel-pad">
+              <div className="section-head" style={{ marginBottom: 20 }}>
+                <div>
+                  <div className="eyebrow eyebrow-muted" style={{ marginBottom: 8 }}>Setup</div>
+                  <h2>{missing.length ? 'Complete your profile' : 'Your profile is complete'}</h2>
+                </div>
+                <span className={`badge ${missing.length ? 'badge-gold' : 'badge-success'}`}>{percent}%</span>
+              </div>
+              <div className="progress-bar" style={{ marginBottom: 22 }}><div className="progress-fill" style={{ width: `${percent}%` }} /></div>
+              {missing.length === 0 ? (
+                <div style={{ fontSize: 14, color: 'var(--text-secondary)' }}>Everything is in place. Update your details any time from Profile & Identity.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {missing.map((m) => (
+                    <Link key={m.key} href={`/profile?tab=${m.tab}`} className="panel-inner" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 16px', color: 'var(--text-primary)', textDecoration: 'none', fontSize: 13.5 }}>
+                      <Circle size={16} color="var(--text-muted)" />
+                      <span style={{ flex: 1 }}>{m.label}</span>
+                      <ArrowRight size={15} color="var(--yellow)" />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </section>
+
+            {/* Job feed */}
+            <section className="panel" style={{ overflow: 'hidden' }}>
+              <div style={{ padding: '26px 30px', borderBottom: '1px solid var(--border-light)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div className="eyebrow eyebrow-muted" style={{ marginBottom: 8 }}>Service Requests</div>
+                  <h2 className="serif" style={{ fontSize: 24, fontWeight: 600 }}>Job Activity</h2>
+                </div>
+                <span className="badge badge-info"><Wrench size={12} /> Live</span>
+              </div>
+              <Empty icon={Wrench} title="No job requests yet" desc={verified || profile.online ? 'New customer requests matching your specialization will appear here as soon as they are placed.' : 'Go online to start receiving customer requests.'} />
+            </section>
+          </div>
+
+          {/* Right column: identity card */}
+          <aside className="panel panel-pad" style={{ alignSelf: 'flex-start', minWidth: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', paddingBottom: 22, borderBottom: '1px solid var(--border-light)', marginBottom: 22 }}>
+              <Avatar size={84} />
+              <div className="serif" style={{ fontSize: 22, fontWeight: 600, marginTop: 16 }}>{user?.name}</div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 4 }}>{profile.designation || profile.serviceType || 'Service Provider'}</div>
+              <span className={`badge ${verified ? 'badge-success' : 'badge-gold'}`} style={{ marginTop: 14 }}>
+                {verified ? <><BadgeCheck size={12} /> Verified</> : <><Clock size={12} /> Pending review</>}
               </span>
             </div>
-            <h1
-              style={{
-                fontSize: '28px',
-                fontWeight: 800,
-                color: '#f8fafc',
-                letterSpacing: '-0.5px',
-                margin: 0,
-              }}
-            >
-              {greeting},{' '}
-              <span
-                style={{
-                  background: 'linear-gradient(135deg, #d4af37 0%, #f3e5ab 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}
-              >
-                {user?.name || 'Admin'}
-              </span>
-            </h1>
-            <p style={{ fontSize: '13.5px', color: '#6b7280', marginTop: '6px', fontWeight: 400 }}>
-              {currentDate} · RepairEase Admin Portal
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {/* Live Time */}
-            <div
-              style={{
-                padding: '10px 16px',
-                background: 'rgba(212,175,55,0.06)',
-                border: '1px solid rgba(212,175,55,0.2)',
-                borderRadius: '10px',
-                textAlign: 'center',
-              }}
-            >
-              <div
-                style={{
-                  fontSize: '20px',
-                  fontWeight: 800,
-                  color: '#d4af37',
-                  fontFamily: "'JetBrains Mono', monospace",
-                  letterSpacing: '2px',
-                }}
-              >
-                {currentTime}
-              </div>
-              <div style={{ fontSize: '9.5px', color: '#6b7280', marginTop: '2px', letterSpacing: '1px' }}>
-                PKT TIME
-              </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <Detail icon={Mail} value={profile.email} />
+              <Detail icon={Phone} value={profile.phone} />
+              <Detail icon={Building2} value={profile.businessName} />
+              <Detail icon={MapPin} value={profile.address} />
+              {!profile.phone && !profile.businessName && !profile.address && (
+                <div style={{ fontSize: 12.5, color: 'var(--text-muted)', lineHeight: 1.6 }}>Add your contact and business details to display them here.</div>
+              )}
             </div>
-
-            {/* Platform Status */}
-            <div
-              style={{
-                padding: '10px 16px',
-                background: 'rgba(34,197,94,0.06)',
-                border: '1px solid rgba(34,197,94,0.2)',
-                borderRadius: '10px',
-              }}
-            >
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#22c55e', marginBottom: '2px' }}>
-                All Systems Online
+            <Link href="/profile" className="btn btn-secondary btn-full" style={{ marginTop: 24 }}>Edit Profile</Link>
+            {missing.length === 0 && (
+              <div style={{ marginTop: 16, display: 'flex', gap: 8, alignItems: 'center', fontSize: 12, color: 'var(--success)', justifyContent: 'center' }}>
+                <CircleCheck size={14} /> All details on file
               </div>
-              <div style={{ fontSize: '10px', color: '#6b7280' }}>99.9% uptime · No incidents</div>
-            </div>
-          </div>
+            )}
+          </aside>
         </div>
-
-        {/* ── STAT CARDS ROW ───────────────────────────────────── */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '16px',
-            marginBottom: '28px',
-          }}
-        >
-          <StatCard
-            icon="👤"
-            label="Total Providers"
-            value="—"
-            sub="Connect your data source"
-            trend="neutral"
-            color="#d4af37"
-          />
-          <StatCard
-            icon="🔧"
-            label="Active Jobs"
-            value="—"
-            sub="Real-time job feed pending"
-            trend="neutral"
-            color="#3b82f6"
-          />
-          <StatCard
-            icon="✅"
-            label="Completed Today"
-            value="—"
-            sub="Completion rate available soon"
-            trend="neutral"
-            color="#22c55e"
-          />
-          <StatCard
-            icon="⭐"
-            label="Avg. Rating"
-            value="—"
-            sub="Customer ratings coming soon"
-            trend="neutral"
-            color="#f59e0b"
-          />
-        </div>
-
-        {/* ── MAIN 2-COLUMN GRID ───────────────────────────────── */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 380px',
-            gap: '20px',
-            marginBottom: '20px',
-          }}
-        >
-          {/* ── LEFT: Recent Activity + Provider Requests ──────── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* Recent Provider Registrations */}
-            <SectionCard
-              title="Recent Provider Applications"
-              subtitle="New registrations awaiting admin review"
-              badge="LIVE"
-              badgeColor="#22c55e"
-              action={
-                <button
-                  style={{
-                    padding: '6px 14px',
-                    borderRadius: '7px',
-                    background: 'rgba(212,175,55,0.1)',
-                    border: '1px solid rgba(212,175,55,0.3)',
-                    color: '#d4af37',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
-                  View All
-                </button>
-              }
-            >
-              <EmptyState
-                icon="📋"
-                title="No applications yet"
-                desc="Provider registration applications will appear here for review and approval."
-              />
-            </SectionCard>
-
-            {/* Recent Job Activity */}
-            <SectionCard
-              title="Job Activity Feed"
-              subtitle="Real-time service request stream"
-              badge="FEED"
-              badgeColor="#3b82f6"
-              action={
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '5px 10px',
-                    borderRadius: '6px',
-                    background: 'rgba(59,130,246,0.08)',
-                    border: '1px solid rgba(59,130,246,0.25)',
-                  }}
-                >
-                  <span
-                    style={{
-                      width: 6,
-                      height: 6,
-                      borderRadius: '50%',
-                      background: '#3b82f6',
-                      boxShadow: '0 0 6px #3b82f6',
-                    }}
-                  />
-                  <span style={{ fontSize: '10px', color: '#60a5fa', fontFamily: "'JetBrains Mono', monospace" }}>
-                    Connecting...
-                  </span>
-                </div>
-              }
-            >
-              <EmptyState
-                icon="🔧"
-                title="Awaiting job data"
-                desc="Job requests and service activity will stream here in real time once connected."
-              />
-            </SectionCard>
-          </div>
-
-          {/* ── RIGHT COLUMN ─────────────────────────────────────── */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {/* Platform Health */}
-            <SectionCard title="Platform Health" subtitle="Service status overview">
-              <div style={{ padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {[
-                  { label: 'Authentication API', status: 'Operational', color: '#22c55e' },
-                  { label: 'Job Matching Engine', status: 'Operational', color: '#22c55e' },
-                  { label: 'Notification Service', status: 'Operational', color: '#22c55e' },
-                  { label: 'Payment Gateway', status: 'Not Configured', color: '#f59e0b' },
-                  { label: 'SMS / WhatsApp', status: 'Not Configured', color: '#f59e0b' },
-                ].map(({ label, status, color }) => (
-                  <div
-                    key={label}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <span style={{ fontSize: '12.5px', color: '#94a3b8' }}>{label}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span
-                        style={{
-                          width: 6,
-                          height: 6,
-                          borderRadius: '50%',
-                          background: color,
-                          boxShadow: `0 0 6px ${color}`,
-                        }}
-                      />
-                      <span style={{ fontSize: '11px', color, fontWeight: 600, fontFamily: "'JetBrains Mono', monospace" }}>
-                        {status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </SectionCard>
-
-            {/* Quick Actions */}
-            <SectionCard title="Quick Actions" subtitle="Common admin operations">
-              <div style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <QuickAction
-                  icon="👤"
-                  label="Manage Providers"
-                  desc="View, approve or suspend providers"
-                  color="#d4af37"
-                />
-                <QuickAction
-                  icon="📦"
-                  label="View Job Requests"
-                  desc="Monitor all active service requests"
-                  color="#3b82f6"
-                />
-                <QuickAction
-                  icon="⭐"
-                  label="Review Ratings"
-                  desc="Customer feedback and disputes"
-                  color="#f59e0b"
-                />
-                <QuickAction
-                  icon="⚙️"
-                  label="System Settings"
-                  desc="Configure platform and notifications"
-                  color="#8b5cf6"
-                />
-              </div>
-            </SectionCard>
-          </div>
-        </div>
-
-        {/* ── BOTTOM FULL-WIDTH: Analytics Placeholder ─────────── */}
-        <SectionCard
-          title="Analytics Overview"
-          subtitle="Platform performance metrics and trends"
-          badge="COMING SOON"
-          badgeColor="#8b5cf6"
-          action={
-            <button
-              style={{
-                padding: '6px 14px',
-                borderRadius: '7px',
-                background: 'rgba(139,92,246,0.1)',
-                border: '1px solid rgba(139,92,246,0.3)',
-                color: '#a78bfa',
-                fontSize: '11.5px',
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              Configure
-            </button>
-          }
-        >
-          <div
-            style={{
-              padding: '0 22px 22px',
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '14px',
-              marginTop: '16px',
-            }}
-          >
-            {[
-              { label: 'Revenue This Month', icon: '💰', color: '#22c55e', desc: 'Connect payment gateway' },
-              { label: 'New Users (7 Days)', icon: '📈', color: '#3b82f6', desc: 'User registration analytics' },
-              { label: 'Avg. Response Time', icon: '⚡', color: '#f59e0b', desc: 'Provider response metrics' },
-            ].map(({ label, icon, color, desc }) => (
-              <div
-                key={label}
-                style={{
-                  padding: '18px',
-                  background: 'rgba(255,255,255,0.025)',
-                  border: '1px dashed rgba(255,255,255,0.08)',
-                  borderRadius: '10px',
-                  textAlign: 'center',
-                }}
-              >
-                <div style={{ fontSize: '24px', marginBottom: '8px' }}>{icon}</div>
-                <div style={{ fontSize: '22px', fontWeight: 800, color, marginBottom: '4px', fontFamily: "'JetBrains Mono', monospace" }}>
-                  —
-                </div>
-                <div style={{ fontSize: '12px', fontWeight: 600, color: '#94a3b8', marginBottom: '3px' }}>{label}</div>
-                <div style={{ fontSize: '10.5px', color: '#4b5563' }}>{desc}</div>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
       </div>
     </DashboardLayout>
   );

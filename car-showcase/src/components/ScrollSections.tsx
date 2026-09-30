@@ -15,9 +15,10 @@ import {
 import { getLenis } from '../hooks/useLenis';
 
 interface ScrollSectionsProps {
-  currentColor: CarColorOption;
-  onColorSelect: (color: CarColorOption) => void;
-  onOpenReservation: () => void;
+  activePhase?: number;
+  currentColor?: CarColorOption;
+  onColorSelect?: (color: CarColorOption) => void;
+  onOpenReservation?: () => void;
 }
 
 // Minimal Animated Stat Counter
@@ -72,9 +73,9 @@ function AnimatedStatCounter({
 }
 
 export default function ScrollSections({
-  currentColor,
-  onColorSelect,
-  onOpenReservation,
+  currentColor = CAR_COLORS[0],
+  onColorSelect = () => {},
+  onOpenReservation = () => {},
 }: ScrollSectionsProps) {
   const [testDriveName, setTestDriveName] = useState('');
   const [testDriveEmail, setTestDriveEmail] = useState('');

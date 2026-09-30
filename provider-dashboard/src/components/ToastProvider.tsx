@@ -1,4 +1,5 @@
 'use client';
+import { CircleCheck, CircleAlert, Info, TriangleAlert } from 'lucide-react';
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
 type ToastType = 'success' | 'error' | 'info' | 'warning';
@@ -12,17 +13,17 @@ const ToastContext = createContext<ToastContextValue>({ showToast: () => {} });
 
 export const useToast = () => useContext(ToastContext);
 
-const ICONS: Record<ToastType, string> = {
-  success: '✅',
-  error: '❌',
-  info: '💡',
-  warning: '⚠️',
+const ICONS: Record<ToastType, typeof Info> = {
+  success: CircleCheck,
+  error: CircleAlert,
+  info: Info,
+  warning: TriangleAlert,
 };
 
 const COLORS: Record<ToastType, string> = {
   success: 'var(--success)',
   error: 'var(--danger)',
-  info: 'var(--accent)',
+  info: 'var(--blue-soft)',
   warning: 'var(--accent3)',
 };
 
@@ -69,7 +70,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               backdropFilter: 'blur(12px)',
             }}
           >
-            <span style={{ fontSize: '20px', flexShrink: 0 }}>{ICONS[toast.type]}</span>
+            {(() => { const I = ICONS[toast.type]; return <I size={20} color={COLORS[toast.type]} style={{ flexShrink: 0 }} />; })()}
             <span style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.4 }}>{toast.message}</span>
             <button
               onClick={() => setToasts(t => t.filter(x => x.id !== toast.id))}
