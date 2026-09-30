@@ -156,7 +156,9 @@ export default function RadialMenu({ side, items, hubIcon: HubIcon, hubLabel, ar
           {items.map((it, i) => {
             const [lo, hi] = range(i);
             const mid = (lo + hi) / 2;
-            const [bx, by] = pt(R_MID, mid);
+            const [bx0, by] = pt(R_MID, mid);
+            // keep labels of the top/bottom wedges inside the screen edge
+            const bx = side === 'left' ? Math.max(bx0, 52) : Math.min(bx0, R - 52);
             const rad = (mid * Math.PI) / 180;
             const lift = hover === i ? 9 : 0;
             const Icon = it.icon;

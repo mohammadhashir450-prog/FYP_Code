@@ -4,7 +4,7 @@ import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Camera, Eye, EyeOff, FileText } from 'lucide-react';
-import { useAuth } from '@/components/AuthProvider';
+import { useAuth, phoneKey } from '@/components/AuthProvider';
 import { useToast } from '@/components/ToastProvider';
 import { BUSINESS_TYPES, EXPERIENCE, SERVICE_TYPES, fileToDataUrl } from '@/lib/profile';
 import { garage, pulseError, pulseTyping, GarageFocus } from '@/lib/garageState';
@@ -15,7 +15,7 @@ const STEP_TITLES = ['Create your account', 'Your workshop', 'Verify your identi
 const STEP_SAYS = ['New here? Let me get your bay ready.', 'Tell me about your workshop.', 'Last step — I just need your ID.'];
 
 const empty = {
-  fullName: '', email: '', phone: '', password: '', confirm: '',
+  fullName: '', phone: '', password: '', confirm: '',
   businessName: '', businessType: '', serviceType: '', experience: '', address: '',
   nationalId: '', documentName: '', photo: '',
 };
@@ -65,10 +65,10 @@ export default function LoginPage() {
 
   const handleLogin = async (e: React.SyntheticEvent) => {
     e.preventDefault();
-    if (!form.email.trim() || !form.password) return fail('Enter your email and password.');
+    if (!form.phone.trim() || !form.password) return fail('Enter your phone number and password.');
     setLoading(true);
     setSubmitted(true);
-    const res = await login(form.email, form.password);
+    const res = await login(form.phone, form.password);
     setLoading(false);
     if (!res.ok) { setSubmitted(false); return fail(res.error || 'Sign in failed.'); }
     showToast('Welcome back to RepairEase', 'success');
@@ -78,8 +78,7 @@ export default function LoginPage() {
   const next = () => {
     if (step === 0) {
       if (!form.fullName.trim()) return fail('Enter your full name.');
-      if (!/^\S+@\S+\.\S+$/.test(form.email)) return fail('Enter a valid email address.');
-      if (!form.phone.trim()) return fail('Enter your phone number.');
+      if (phoneKey(form.phone).length < 10) return fail('Enter a valid phone number.');
       if (form.password.length < 8) return fail('Password must be at least 8 characters.');
       if (form.password !== form.confirm) return fail('Passwords do not match.');
     }
@@ -147,14 +146,14 @@ export default function LoginPage() {
           )}
 
           <h1 className="font-display text-[32px] font-semibold leading-tight">{mode === 'login' ? 'Welcome back' : STEP_TITLES[step]}</h1>
-          <p className="mt-2 text-sm text-mist-dim">{mode === 'login' ? 'Sign in to your provider workspace.' : `Step ${step + 1} of 3`}</p>
+          <p className="mt-2 text-sm text-mist-dim">{mode === 'login' ? 'Sign in with your phone number.' : `Step ${step + 1} of 3`}</p>
 
           {error && <div role="alert" className="mt-6 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-[13px] text-red-200">{error}</div>}
 
           {mode === 'login' && (
             <form onSubmit={handleLogin} className="mt-7 grid gap-5" noValidate>
-              <label><span className={labelCls}>Email</span>
-                <input className={inputCls} type="email" autoComplete="email" value={form.email} onChange={(e) => up('email', e.target.value)} {...fp('text')} placeholder="you@example.com" /></label>
+              <label><span className={labelCls}>Phone number</span>
+                <input className={inputCls} type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={(e) => up('phone', e.target.value)} {...fp('text')} placeholder="0300 1234567" /></label>
               <label><span className={labelCls}>Password</span>
                 <span className="relative block">
                   <input className={`${inputCls} pr-12`} type={showPass ? 'text' : 'password'} autoComplete="current-password" value={form.password} onChange={(e) => up('password', e.target.value)} {...fp('password')} placeholder="Your password" />
@@ -170,10 +169,7 @@ export default function LoginPage() {
               {step === 0 && (
                 <>
                   <label><span className={labelCls}>Full name</span><input className={inputCls} value={form.fullName} onChange={(e) => up('fullName', e.target.value)} {...fp('text')} placeholder="Your full name" autoComplete="name" /></label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <label><span className={labelCls}>Email</span><input className={inputCls} type="email" value={form.email} onChange={(e) => up('email', e.target.value)} {...fp('text')} placeholder="you@example.com" autoComplete="email" /></label>
-                    <label><span className={labelCls}>Phone</span><input className={inputCls} type="tel" value={form.phone} onChange={(e) => up('phone', e.target.value)} {...fp('text')} placeholder="Contact number" autoComplete="tel" /></label>
-                  </div>
+                  <label><span className={labelCls}>Phone number</span><input className={inputCls} type="tel" inputMode="tel" value={form.phone} onChange={(e) => up('phone', e.target.value)} {...fp('text')} placeholder="0300 1234567" autoComplete="tel" /></label>
                   <div className="grid grid-cols-2 gap-3">
                     <label><span className={labelCls}>Password</span><input className={inputCls} type={showPass ? 'text' : 'password'} value={form.password} onChange={(e) => up('password', e.target.value)} {...fp('password')} placeholder="Min. 8 characters" autoComplete="new-password" /></label>
                     <label><span className={labelCls}>Confirm</span><input className={inputCls} type={showPass ? 'text' : 'password'} value={form.confirm} onChange={(e) => up('confirm', e.target.value)} {...fp('password')} autoComplete="new-password" /></label>

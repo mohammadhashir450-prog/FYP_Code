@@ -43,7 +43,7 @@ interface AuthContextValue {
   hasAccount: boolean;
   /** Convenience view used by the shell (sidebar / topbar). */
   user: { name: string; initials: string; email: string; role: string; photo: string; verified: boolean; online: boolean } | null;
-  login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
+  login: (phone: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   register: (data: Partial<Profile>, password: string) => Promise<void>;
   updateProfile: (patch: Partial<Profile>) => void;
   changePassword: (current: string, next: string) => Promise<{ ok: boolean; error?: string }>;
@@ -53,6 +53,9 @@ interface AuthContextValue {
 
 const ACCOUNT_KEY = 'repairease.account';
 const SESSION_KEY = 'repairease.session';
+
+/** Digits only, last 10 — so 0300-1234567, +92 300 1234567 and 3001234567 all match. */
+export const phoneKey = (p: string) => p.replace(/\D/g, '').slice(-10);
 
 async function hash(text: string) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`repairease::${text}`));
@@ -105,11 +108,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try { on ? localStorage.setItem(SESSION_KEY, '1') : localStorage.removeItem(SESSION_KEY); } catch { /* ignore */ }
   };
 
-  const login: AuthContextValue['login'] = async (email, password) => {
+  const login: AuthContextValue['login'] = async (phone, password) => {
     const acc = readAccount();
     if (!acc) return { ok: false, error: 'No provider account found on this device. Apply for an account first.' };
-    if (acc.profile.email.trim().toLowerCase() !== email.trim().toLowerCase() || acc.pw !== (await hash(password))) {
-      return { ok: false, error: 'Email or password is incorrect.' };
+    if (phoneKey(acc.profile.phone) !== phoneKey(phone) || acc.pw !== (await hash(password))) {
+      return { ok: false, error: 'Phone number or password is incorrect.' };
     }
     setAccount(acc);
     startSession(true);
@@ -155,9 +158,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAuthenticated = ready && session && !!account;
   const user = isAuthenticated
     ? {
-        name: profile.fullName || profile.email.split('@')[0] || 'Provider',
-        initials: initialsOf(profile.fullName || profile.email),
-        email: profile.email,
+        name: profile.fullName || profile.phone || 'Provider',
+        initials: initialsOf(profile.fullName || profile.phone),
+        email: profile.email || profile.phone,
         role: profile.designation || profile.serviceType || 'Service Provider',
         photo: profile.photo,
         verified: profile.verificationStatus === 'verified',

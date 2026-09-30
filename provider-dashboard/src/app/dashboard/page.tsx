@@ -1,15 +1,10 @@
 'use client';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
 import { ArrowRight, BadgeCheck, Building2, Clock, CircleCheck, Circle, Mail, MapPin, Phone, Radio, ShieldCheck, Wrench } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
 import { useAuth } from '@/components/AuthProvider';
 import { Avatar } from '@/components/Topbar';
 import { completeness, memberSince } from '@/lib/profile';
-import { STATUS_STEPS, useBooking } from '@/lib/booking';
-import { fmtDist, fmtEta } from '@/components/tracking/TrackingPanel';
-
-const TrackingMap = dynamic(() => import('@/components/tracking/TrackingMap'), { ssr: false });
 
 function Stat({ icon: Icon, label, value, sub }: { icon: typeof Clock; label: string; value: string; sub: string }) {
   return (
@@ -48,45 +43,6 @@ function Detail({ icon: Icon, value }: { icon: typeof Mail; value: string }) {
   );
 }
 
-function LiveBooking() {
-  const { booking, creating, createDemoBooking, remainingM, etaSec } = useBooking();
-  const step = booking ? STATUS_STEPS.find((x) => x.id === booking.status)! : null;
-  return (
-    <section className="panel" style={{ overflow: 'hidden', marginBottom: 22 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 340px) minmax(0, 1fr)' }} className="lb-grid">
-        <div style={{ padding: 28, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 14 }}>
-          <div className="eyebrow eyebrow-muted">Live booking</div>
-          {booking && step ? (
-            <>
-              <h2 className="serif" style={{ fontSize: 26, fontWeight: 600, lineHeight: 1.2 }}>{step.label}</h2>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.6 }}>{booking.customer.name} · {booking.service}</div>
-              {(booking.status === 'enroute' || booking.status === 'assigned') && (
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-                  <span className="serif" style={{ fontSize: 34, fontWeight: 600 }}>{fmtEta(etaSec)}</span>
-                  <span style={{ fontSize: 12.5, color: 'var(--text-muted)' }}>{fmtDist(remainingM)} away</span>
-                </div>
-              )}
-              <Link href="/tracking" className="btn btn-primary" style={{ alignSelf: 'flex-start' }}>Open live tracking</Link>
-            </>
-          ) : (
-            <>
-              <h2 className="serif" style={{ fontSize: 26, fontWeight: 600, lineHeight: 1.2 }}>No active booking</h2>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.65 }}>Once a customer confirms a booking, their location and your route appear here in real time.</p>
-              <button className="btn btn-secondary" style={{ alignSelf: 'flex-start' }} disabled={creating} onClick={() => createDemoBooking()}>{creating ? 'Locating…' : 'Create test booking'}</button>
-            </>
-          )}
-        </div>
-        <div style={{ position: 'relative', minHeight: 280, borderLeft: '1px solid var(--border-light)' }}>
-          {booking ? <TrackingMap booking={booking} interactive={false} className="" /> : (
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at 50% 50%, rgba(29,85,144,.25), transparent 70%)', color: 'var(--text-muted)', fontSize: 13 }}>Map appears when a booking is active</div>
-          )}
-        </div>
-      </div>
-      <style>{`@media (max-width: 900px) { .lb-grid { grid-template-columns: minmax(0, 1fr) !important; } .lb-grid > div:last-child { min-height: 260px; border-left: 0 !important; border-top: 1px solid var(--border-light); } }`}</style>
-    </section>
-  );
-}
-
 export default function DashboardHome() {
   const { profile, user } = useAuth();
   const { percent, missing } = completeness(profile);
@@ -112,10 +68,6 @@ export default function DashboardHome() {
           <Stat icon={ShieldCheck} label="Profile Strength" value={`${percent}%`} sub={missing.length ? `${missing.length} item${missing.length > 1 ? 's' : ''} left to complete` : 'Profile fully complete'} />
           <Stat icon={Clock} label="Member Since" value={memberSince(profile) || '—'} sub="Provider account created" />
         </section>
-
-
-        {/* Live booking — customer location + mechanic tracking */}
-        <LiveBooking />
 
         <div className="split-main">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 22, minWidth: 0 }}>

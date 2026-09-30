@@ -6,7 +6,7 @@ import {
   IdCard, Landmark, CircleCheck, CircleAlert, KeyRound, Eye, EyeOff, Trash2, Radio,
 } from 'lucide-react';
 import DashboardLayout from '@/components/DashboardLayout';
-import { useAuth, Profile } from '@/components/AuthProvider';
+import { useAuth, Profile, phoneKey } from '@/components/AuthProvider';
 import { useToast } from '@/components/ToastProvider';
 import { BIO_LIMIT, BUSINESS_TYPES, CURRENCIES, EXPERIENCE, SERVICE_TYPES, completeness, fileToDataUrl, memberSince } from '@/lib/profile';
 
@@ -101,7 +101,8 @@ function ProfileEditor() {
   const activeTab = TABS.some((t) => t.id === tab) ? tab : 'general';
 
   const save = async () => {
-    if (!draft.email.trim() || !/^\S+@\S+\.\S+$/.test(draft.email)) return showToast('Please enter a valid email address', 'error');
+    if (draft.email.trim() && !/^\S+@\S+\.\S+$/.test(draft.email)) return showToast('Please enter a valid email address or leave it empty', 'error');
+    if (phoneKey(draft.phone).length < 10) return showToast('Please enter a valid phone number', 'error');
     setSaving(true);
     await new Promise((r) => setTimeout(r, 350));
     updateProfile({ ...draft, email: draft.email.trim(), online: profile.online });
@@ -182,8 +183,8 @@ function ProfileEditor() {
                 <Field label="Full legal name" icon={IdCard}><input className="input has-icon" value={draft.fullName} onChange={(e) => set('fullName', e.target.value)} placeholder="Your full name" /></Field>
                 <Field label="Official designation" icon={Briefcase}><input className="input has-icon" value={draft.designation} onChange={(e) => set('designation', e.target.value)} placeholder="e.g. Owner & Lead Technician" /></Field>
                 <div className="form-grid-2">
-                  <Field label="Email address" icon={Mail}><input className="input has-icon" type="email" value={draft.email} onChange={(e) => set('email', e.target.value)} placeholder="you@example.com" /></Field>
-                  <Field label="Phone number" icon={Phone}><input className="input has-icon" type="tel" value={draft.phone} onChange={(e) => set('phone', e.target.value)} placeholder="Contact number" /></Field>
+                  <Field label="Email (optional)" icon={Mail}><input className="input has-icon" type="email" value={draft.email} onChange={(e) => set('email', e.target.value)} placeholder="Optional" /></Field>
+                  <Field label="Phone number (used to sign in)" icon={Phone}><input className="input has-icon" type="tel" value={draft.phone} onChange={(e) => set('phone', e.target.value)} placeholder="Contact number" /></Field>
                 </div>
               </div>
             </section>

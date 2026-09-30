@@ -1,14 +1,15 @@
 'use client';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogIn, Hourglass, LayoutDashboard, UserRound, Briefcase, Wrench } from 'lucide-react';
+import { LogIn, Hourglass, LayoutDashboard, UserRound, Briefcase, MapPinned, Wrench } from 'lucide-react';
 import RadialMenu, { RadialItem } from './RadialMenu';
 
 const PAGES = [
-  { label: 'Login / Register', href: '/login', icon: LogIn },
+  { label: 'Login', href: '/login', icon: LogIn },
   { label: 'Verification', href: '/pending', icon: Hourglass },
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { label: 'Profile', href: '/profile', icon: UserRound },
   { label: 'Job Requests', href: '/jobs', icon: Briefcase },
+  { label: 'Live Tracking', href: '/tracking', icon: MapPinned },
 ];
 
 /** Right-edge radial menu: one wedge per portal page. */
