@@ -1,4 +1,4 @@
-import { useEffect, useRef, MutableRefObject } from 'react';
+import { useEffect, useRef, type MutableRefObject } from 'react';
 
 /**
  * Returns a MutableRefObject<number> that always holds

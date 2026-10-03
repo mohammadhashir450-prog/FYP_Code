@@ -58,7 +58,7 @@ type GLTFResult = GLTF & {
   };
 };
 
-const MODEL_URL = '/models/land-cruiser-transformed.glb';
+const MODEL_URL = `${import.meta.env.BASE_URL}models/land-cruiser-transformed.glb`;
 useGLTF.preload(MODEL_URL);
 
 // ─── Public interface ─────────────────────────────────────────────────────────
@@ -94,7 +94,7 @@ const EXPLODE: Record<string, [number, number, number]> = {
 };
 
 export default function CarModel({ controls, onAssembled }: CarModelProps) {
-  const { nodes, materials } = useGLTF(MODEL_URL) as GLTFResult;
+  const { nodes, materials } = useGLTF(MODEL_URL) as unknown as GLTFResult;
 
   // ── Mesh refs (one per part) ──────────────────────────────────────────────
   const chassisRef   = useRef<THREE.Mesh>(null!);

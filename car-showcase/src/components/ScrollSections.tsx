@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   Wind,
   Layers,
-  ArrowUpRight,
   Maximize2
 } from 'lucide-react';
 import { getLenis } from '../hooks/useLenis';

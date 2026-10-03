@@ -70,3 +70,14 @@ FYP_code/
    ```
 
 4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
+## 🌐 Deployment (single Vercel project)
+
+`car-showcase` (Vite) is bundled into `provider-dashboard` (Next.js) at build time, so one deployment serves both:
+
+- `/` and the dashboard routes → provider-dashboard
+- `/showcase` → car-showcase
+
+On Vercel: import this repo, set **Root Directory** to `provider-dashboard` (framework: Next.js, default build command). `npm run build` runs `scripts/build-showcase.mjs` first, which builds `../car-showcase` into `public/showcase` (generated, git-ignored).

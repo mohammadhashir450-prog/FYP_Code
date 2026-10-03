@@ -23,7 +23,7 @@ export default function App() {
   const [isLoaded,   setIsLoaded]   = useState(false);
   const [assembled,  setAssembled]  = useState(false);
   const [currentColor, setCurrentColor] = useState<CarColorOption>(CAR_COLORS[0]);
-  const [activeSection, setActiveSection] = useState(0);
+  const [activeSection] = useState(0);
   const [reservationOpen, setReservationOpen] = useState(false);
 
   const [controls, setControls] = useState<CarModelControls>({

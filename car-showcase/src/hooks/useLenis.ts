@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import Lenis from 'lenis';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -8,8 +8,6 @@ gsap.registerPlugin(ScrollTrigger);
 let lenisInstance: Lenis | null = null;
 
 export function useLenis() {
-  const rafId = useRef<number>(0);
-
   useEffect(() => {
     lenisInstance = new Lenis({
       duration: 1.2,

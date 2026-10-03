@@ -40,3 +40,6 @@ Thumbs.db
 
 # TypeScript build info
 *.tsbuildinfo
+
+# car-showcase build output (generated)
+/public/showcase/
