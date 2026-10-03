@@ -165,7 +165,7 @@ function ExplodedCar() {
       g.rotation.z = -lean.current.vel * 0.07; // roll into the scroll
       g.rotation.x = lean.current.vel * 0.05;
       g.position.x = THREE.MathUtils.damp(g.position.x, (narrow ? 0 : story.x) + driftX, 4, dt);
-      g.position.y = 0.7 * smooth(ex) + Math.sin(d * 3) * 0.14 + Math.sin(t * 0.8) * 0.035 - lean.current.vel * 0.18;
+      g.position.y = (narrow ? 1.9 : 0) + 0.7 * smooth(ex) + Math.sin(d * 3) * 0.14 + Math.sin(t * 0.8) * 0.035 - lean.current.vel * 0.18;
       g.position.z = Math.cos(d * 1.5) * 0.9 * (1 - ex);
       const out = smooth(story.carOut);
       g.position.x -= out * 11;

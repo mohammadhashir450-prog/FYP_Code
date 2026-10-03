@@ -86,7 +86,7 @@ export default function QuickPie() {
         .qp-scrim { position: fixed; inset: 0; z-index: 90; background: rgba(2,10,24,.55); backdrop-filter: blur(3px); opacity: 0; pointer-events: none; transition: opacity .3s; }
         .qp-scrim.on { opacity: 1; pointer-events: auto; }
         @media (max-width: 900px) { .qp-root { left: 0; } }
-        @media (max-width: 640px) { .qp-root { transform: translateY(-50%) scale(.8); transform-origin: left center; } }
+        @media (max-width: 640px) { .qp-root { transform: translateY(-50%) scale(.8); transform-origin: left center; } .qp-hub { transform: scale(.55); } .qp-open .qp-hub { transform: none; } }
       `}</style>
 
       <div className={`qp-scrim${open ? ' on' : ''}`} onClick={close} />

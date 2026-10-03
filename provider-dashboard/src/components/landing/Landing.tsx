@@ -53,7 +53,7 @@ function AcRemote() {
   const btn = 'flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/5 text-ink transition hover:border-brand hover:text-brand disabled:opacity-40';
 
   return (
-    <div className="reveal mt-8 w-full max-w-md rounded-3xl border border-steel/50 bg-navy/70 p-5 shadow-[0_24px_70px_rgba(0,0,0,.45)] backdrop-blur-xl">
+    <div className="reveal mt-5 w-full max-w-md rounded-3xl border border-steel/50 bg-navy/80 p-4 sm:p-5 md:mt-8 shadow-[0_24px_70px_rgba(0,0,0,.45)] backdrop-blur-xl">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-brand">
           <span className={`h-2 w-2 rounded-full ${power ? 'bg-emerald-400 shadow-[0_0_10px_#34d399]' : 'bg-mist-dim'}`} /> Smart remote
@@ -63,15 +63,15 @@ function AcRemote() {
         </button>
       </div>
 
-      <div className={`flex items-center gap-5 transition-opacity ${power ? 'opacity-100' : 'opacity-40'}`}>
-        <div className="relative h-[132px] w-[132px] shrink-0">
+      <div className={`flex items-center gap-3 sm:gap-5 transition-opacity ${power ? 'opacity-100' : 'opacity-40'}`}>
+        <div className="relative h-[104px] w-[104px] shrink-0 sm:h-[132px] sm:w-[132px]">
           <svg viewBox="0 0 132 132" className="h-full w-full -rotate-90">
             <defs><linearGradient id="acg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#5fa3ea" /><stop offset="1" stopColor="#ffd60a" /></linearGradient></defs>
             <circle cx="66" cy="66" r={R} fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="8" />
             <circle cx="66" cy="66" r={R} fill="none" stroke="url(#acg)" strokeWidth="8" strokeLinecap="round" strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - frac)} style={{ transition: 'stroke-dashoffset .4s ease' }} />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="font-display text-[40px] font-semibold leading-none text-white">{temp}<span className="text-lg text-brand">°C</span></span>
+            <span className="font-display text-[30px] font-semibold leading-none text-white sm:text-[40px]">{temp}<span className="text-lg text-brand">°C</span></span>
             <span className="mt-1 font-mono text-[9px] uppercase tracking-[0.28em] text-mist-dim">Target</span>
           </div>
         </div>
@@ -186,15 +186,16 @@ export default function Landing() {
         <div ref={zoneRef}>
         {/* 1 — Hero */}
         <section className="flex h-screen items-end justify-center px-6 pb-16 md:items-center md:justify-start md:pb-0 md:pl-[8vw]">
-          <div className="max-w-xl">
-            <div className="mb-5 font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-brand">Land Cruiser 300 · Precision service</div>
-            <h1 className="font-display text-5xl font-semibold leading-[1.05] md:text-7xl">
-              Every part.<br /><em className="bg-gradient-to-r from-brand-light to-brand bg-clip-text text-transparent">Perfectly</em> in place.
+          <div className="max-w-2xl">
+            <div className="mb-4 font-mono text-[10px] font-bold uppercase tracking-[0.3em] text-brand sm:text-[11px]">Land Cruiser 300 · Precision service</div>
+            <h1 className="font-display text-4xl font-semibold leading-[1.1] sm:text-5xl md:text-6xl">
+              Ustad Jee, <em className="whitespace-nowrap bg-gradient-to-r from-brand-light to-brand bg-clip-text not-italic text-transparent">kam py gya jy.</em>
+              <span className="mt-3 block text-2xl font-medium text-ink sm:text-3xl md:text-4xl">Hukam kro Pyary Bhaii, ki Hoya?</span>
             </h1>
-            <p className="mt-6 max-w-md text-base leading-relaxed text-mist">
-              RepairEase connects you with verified mechanics and specialists who take your vehicle apart — and put it back better than new.
+            <p className="mt-4 max-w-md text-sm leading-relaxed text-mist sm:text-base md:mt-6">
+              RepairEase connects you with verified mechanics, electricians and appliance specialists. Tell us the problem, and the right ustad is at your door.
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-4">
+            <div className="mt-6 flex flex-wrap items-center gap-4 md:mt-8">
               <Link href="/login" className="no-underline rounded-xl bg-gradient-to-br from-brand-light to-brand px-7 py-3.5 text-xs font-bold uppercase tracking-[0.15em] text-navy shadow-[0_8px_30px_rgba(255,214,10,.3)] transition hover:-translate-y-0.5">Join as a provider</Link>
               <span className="font-mono text-[11px] uppercase tracking-[0.25em] text-mist-dim">Scroll ↓</span>
             </div>
@@ -228,7 +229,7 @@ export default function Landing() {
           <div className="reveal max-w-md">
             <div className="mb-4 font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-brand">03 — Reassembly</div>
             <h2 className="font-display text-4xl font-semibold leading-tight md:text-5xl">Snapped back <em className="text-brand">to perfection.</em></h2>
-            <p className="mt-5 leading-relaxed text-mist">Every part returns to its exact position. Verified workmanship, transparent pricing, zero guesswork.</p>
+            <p className="mt-5 leading-relaxed text-mist">Har part wapas apni jagah. Verified workmanship, transparent pricing, aur koi guesswork nahi.</p>
           </div>
         </section>
 
@@ -236,12 +237,12 @@ export default function Landing() {
 
         <div ref={climateRef}>
         {/* 5 — Climate (air-conditioner model) */}
-        <section id="climate" className="flex h-screen items-end px-6 pb-14 md:items-center md:pb-0 md:pl-[8vw]">
+        <section id="climate" className="flex min-h-screen items-end px-5 pb-10 pt-[40vh] md:h-screen md:items-center md:px-6 md:pb-0 md:pl-[8vw] md:pt-0">
           <div className="reveal max-w-lg">
             <div className="mb-4 font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-brand">04 — Climate Control</div>
-            <h2 className="font-display text-4xl font-semibold leading-tight md:text-6xl">Cool comfort, <em className="text-brand">engineered.</em></h2>
-            <p className="mt-4 max-w-md leading-relaxed text-mist">From car AC gas refills to home split-unit servicing, our specialists restore perfect airflow and temperature — fast, clean and guaranteed.</p>
-            <ul className="mt-6 flex max-w-md list-none flex-wrap gap-2 text-[12px] text-ink">
+            <h2 className="font-display text-3xl font-semibold leading-tight sm:text-4xl md:text-6xl">Cool comfort, <em className="text-brand">engineered.</em></h2>
+            <p className="mt-3 hidden max-w-md text-sm leading-relaxed text-mist sm:block md:mt-4 md:text-base">From car AC gas refills to home split-unit servicing, our specialists restore perfect airflow and temperature — fast, clean and guaranteed.</p>
+            <ul className="mt-4 hidden max-w-md sm:flex md:mt-6 list-none flex-wrap gap-2 text-[12px] text-ink">
               {['Gas refill & leak detection', 'Compressor & coil service', 'Filter, duct & vent cleaning'].map((t) => (
                 <li key={t} className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5"><span className="h-1.5 w-1.5 rounded-full bg-brand shadow-[0_0_10px_rgba(255,214,10,.8)]" />{t}</li>
               ))}
@@ -253,7 +254,7 @@ export default function Landing() {
         {/* 6 — Details */}
         <section id="services" className="flex min-h-screen items-center px-6 py-24 md:pl-[8vw]">
           <div className="w-full md:max-w-[46%]">
-            <div className="reveal mb-4 font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-brand">04 — What we service</div>
+            <div className="reveal mb-4 font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-brand">05 — What we service</div>
             <h2 className="reveal font-display text-4xl font-semibold leading-tight md:text-5xl">Complete care for <em className="text-brand">every system.</em></h2>
             <div className="mt-10 grid gap-3 sm:grid-cols-2">
               {SERVICES.map((s) => (

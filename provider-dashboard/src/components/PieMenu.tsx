@@ -69,7 +69,7 @@ export default function PieMenu() {
         .pie-hub span { font-family: var(--font-mono); font-size: 8.5px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; }
         .pie-scrim { position: fixed; inset: 0; z-index: 89; background: rgba(2,10,24,.55); backdrop-filter: blur(3px); opacity: 0; pointer-events: none; transition: opacity .3s; }
         .pie-scrim.on { opacity: 1; pointer-events: auto; }
-        @media (max-width: 640px) { .pie-root { transform: translateY(-50%) scale(.82); transform-origin: right center; } }
+        @media (max-width: 640px) { .pie-root { transform: translateY(-50%) scale(.82); transform-origin: right center; } .pie-hub { transform: scale(.55); } .pie-open .pie-hub { transform: none; } }
       `}</style>
 
       <div className={`pie-scrim${open ? ' on' : ''}`} onClick={() => setOpen(false)} />
