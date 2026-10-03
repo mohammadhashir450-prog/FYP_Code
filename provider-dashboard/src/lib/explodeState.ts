@@ -10,5 +10,9 @@ export const story = {
   drift: 0, // 0..1 progress over the WHOLE page (background travel)
   carOut: 0, // 0 = car on stage, 1 = car has left (Climate section)
   ac: 0, // 0..1 air-conditioner entrance
+  acTemp: 24, // remote: target temperature (16-30)
+  acFan: 2, // remote: fan speed 1-3
+  acMode: 'cool' as 'cool' | 'dry' | 'fan', // remote: mode
+  acPower: 1, // remote: 1 = on
   vel: 0, // smoothed scroll velocity (px/s) — the car leans into it
 };

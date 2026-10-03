@@ -7,6 +7,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { story } from '@/lib/explodeState';
 import { CAR_ISSUES, APPLIANCES, LOCAL_CARS } from '@/lib/profile';
+import { Droplets, Minus, Plus, Power, Snowflake, Wind } from 'lucide-react';
 import Navbar from './Navbar';
 import IntroSplash from './IntroSplash';
 
@@ -27,6 +28,78 @@ const PARTS = [
   ['Wheels', 'Four'],
   ['Engine bay', 'One'],
 ];
+
+
+const MODES = [
+  { id: 'cool', label: 'Cool', icon: Snowflake },
+  { id: 'dry', label: 'Dry', icon: Droplets },
+  { id: 'fan', label: 'Fan', icon: Wind },
+] as const;
+
+/** Interactive smart remote: drives the 3D AC (display, airflow, colour) through the shared `story` state. */
+function AcRemote() {
+  const [temp, setTemp] = useState(24);
+  const [fan, setFan] = useState(2);
+  const [mode, setMode] = useState<'cool' | 'dry' | 'fan'>('cool');
+  const [power, setPower] = useState(true);
+
+  useEffect(() => {
+    story.acTemp = temp; story.acFan = fan; story.acMode = mode; story.acPower = power ? 1 : 0;
+  }, [temp, fan, mode, power]);
+
+  const R = 54, CIRC = 2 * Math.PI * R;
+  const frac = (temp - 16) / 14;
+  const step = (d: number) => setTemp((t) => Math.min(30, Math.max(16, t + d)));
+  const btn = 'flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/5 text-ink transition hover:border-brand hover:text-brand disabled:opacity-40';
+
+  return (
+    <div className="reveal mt-8 w-full max-w-md rounded-3xl border border-steel/50 bg-navy/70 p-5 shadow-[0_24px_70px_rgba(0,0,0,.45)] backdrop-blur-xl">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2 font-mono text-[10px] font-bold uppercase tracking-[0.28em] text-brand">
+          <span className={`h-2 w-2 rounded-full ${power ? 'bg-emerald-400 shadow-[0_0_10px_#34d399]' : 'bg-mist-dim'}`} /> Smart remote
+        </div>
+        <button onClick={() => setPower((p) => !p)} aria-pressed={power} aria-label="Power" className={`flex h-9 items-center gap-2 rounded-full border px-3 font-mono text-[10px] font-bold uppercase tracking-[0.18em] transition ${power ? 'border-brand bg-brand text-navy' : 'border-white/15 bg-transparent text-mist hover:text-white'}`}>
+          <Power size={14} strokeWidth={2.6} />{power ? 'On' : 'Off'}
+        </button>
+      </div>
+
+      <div className={`flex items-center gap-5 transition-opacity ${power ? 'opacity-100' : 'opacity-40'}`}>
+        <div className="relative h-[132px] w-[132px] shrink-0">
+          <svg viewBox="0 0 132 132" className="h-full w-full -rotate-90">
+            <defs><linearGradient id="acg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#5fa3ea" /><stop offset="1" stopColor="#ffd60a" /></linearGradient></defs>
+            <circle cx="66" cy="66" r={R} fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="8" />
+            <circle cx="66" cy="66" r={R} fill="none" stroke="url(#acg)" strokeWidth="8" strokeLinecap="round" strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - frac)} style={{ transition: 'stroke-dashoffset .4s ease' }} />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="font-display text-[40px] font-semibold leading-none text-white">{temp}<span className="text-lg text-brand">°C</span></span>
+            <span className="mt-1 font-mono text-[9px] uppercase tracking-[0.28em] text-mist-dim">Target</span>
+          </div>
+        </div>
+
+        <div className="flex-1 space-y-4">
+          <div className="flex items-center gap-3">
+            <button className={btn} onClick={() => step(-1)} disabled={!power || temp <= 16} aria-label="Lower temperature"><Minus size={16} /></button>
+            <span className="flex-1 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-mist-dim">16° — 30°</span>
+            <button className={btn} onClick={() => step(1)} disabled={!power || temp >= 30} aria-label="Raise temperature"><Plus size={16} /></button>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {MODES.map(({ id, label, icon: Icon }) => (
+              <button key={id} onClick={() => setMode(id)} disabled={!power} className={`flex flex-col items-center gap-1 rounded-xl border bg-transparent py-2 font-mono text-[9px] font-bold uppercase tracking-[0.14em] transition disabled:opacity-40 ${mode === id ? 'border-brand bg-brand/15 text-brand' : 'border-white/10 text-mist hover:text-white'}`}>
+                <Icon size={15} />{label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[9px] font-bold uppercase tracking-[0.2em] text-mist-dim">Fan</span>
+            {[1, 2, 3].map((n) => (
+              <button key={n} onClick={() => setFan(n)} disabled={!power} aria-label={`Fan speed ${n}`} className={`h-6 flex-1 rounded-md border-0 transition disabled:opacity-40 ${n <= fan ? 'bg-brand' : 'bg-white/10 hover:bg-white/20'}`} style={{ height: 8 + n * 5 }} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function Landing() {
   const [issueTab, setIssueTab] = useState<'car' | 'home'>('car');
@@ -167,12 +240,13 @@ export default function Landing() {
           <div className="reveal max-w-lg">
             <div className="mb-4 font-mono text-[11px] font-bold uppercase tracking-[0.3em] text-brand">04 — Climate Control</div>
             <h2 className="font-display text-4xl font-semibold leading-tight md:text-6xl">Cool comfort, <em className="text-brand">engineered.</em></h2>
-            <p className="mt-5 max-w-md leading-relaxed text-mist">From car AC gas refills to home split-unit servicing, our specialists restore perfect airflow and temperature — fast, clean and guaranteed.</p>
-            <ul className="mt-7 grid max-w-md list-none gap-3 text-sm text-ink">
-              {['Gas refill & leak detection', 'Compressor & coil service', 'Filter, duct and vent cleaning'].map((t) => (
-                <li key={t} className="flex items-center gap-3"><span className="h-1.5 w-1.5 rounded-full bg-brand shadow-[0_0_10px_rgba(255,214,10,.8)]" />{t}</li>
+            <p className="mt-4 max-w-md leading-relaxed text-mist">From car AC gas refills to home split-unit servicing, our specialists restore perfect airflow and temperature — fast, clean and guaranteed.</p>
+            <ul className="mt-6 flex max-w-md list-none flex-wrap gap-2 text-[12px] text-ink">
+              {['Gas refill & leak detection', 'Compressor & coil service', 'Filter, duct & vent cleaning'].map((t) => (
+                <li key={t} className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5"><span className="h-1.5 w-1.5 rounded-full bg-brand shadow-[0_0_10px_rgba(255,214,10,.8)]" />{t}</li>
               ))}
             </ul>
+            <AcRemote />
           </div>
         </section>
 
