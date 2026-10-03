@@ -42,4 +42,4 @@ Thumbs.db
 *.tsbuildinfo
 
 # car-showcase build output (generated)
-/public/showcase/
+provider-dashboard/public/showcase/
