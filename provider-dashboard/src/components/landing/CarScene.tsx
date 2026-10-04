@@ -171,7 +171,7 @@ function ExplodedCar() {
       g.position.x -= out * 11;
       g.rotation.y += out * 0.9;
       g.visible = out < 0.995;
-      g.scale.setScalar((narrow ? 0.62 : 1) * (1 - out * 0.35));
+      g.scale.setScalar((narrow ? 0.5 : 1) * (1 - out * 0.35));
     }
 
     const camZ = story.camZ * (narrow ? 1.35 : 1);

@@ -149,13 +149,13 @@ export default function LoginPage() {
       <div className="pointer-events-none absolute bottom-5 left-1/2 hidden -translate-x-1/2 font-mono text-[10px] uppercase tracking-[0.3em] text-mist-dim md:block">Move your mouse — the crew is watching</div>
 
       {/* card */}
-      <main className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-y-auto px-3 py-16 md:py-6">
+      <main className="pointer-events-none absolute inset-0 flex items-end justify-center overflow-y-auto px-3 pb-3 pt-14 md:items-center md:py-6">
         <div className="lg-border pointer-events-auto my-auto w-full max-w-[470px] animate-[fadeIn_.7s_ease_both] rounded-[30px] p-px shadow-[0_50px_140px_rgba(0,0,0,.7)]">
-          <div className="relative rounded-[29px] bg-navy/75 px-7 py-8 backdrop-blur-2xl md:px-10 md:py-10">
+          <div className="relative rounded-[29px] bg-navy/80 px-5 py-6 backdrop-blur-2xl md:bg-navy/75 md:px-10 md:py-10">
             <span aria-hidden className="absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
 
             {/* logo */}
-            <div className="mb-6 flex flex-col items-center text-center">
+            <div className="mb-6 hidden flex-col items-center text-center md:flex">
               <span className="relative">
                 <span aria-hidden className="absolute -inset-2 rounded-3xl bg-brand/30 blur-xl" />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -183,7 +183,7 @@ export default function LoginPage() {
             ) : null}
 
             <h1 className="font-display text-[30px] font-semibold leading-tight">{mode === 'login' ? 'Welcome back' : STEP_TITLES[step]}</h1>
-            <p className="mt-2 text-[13.5px] leading-relaxed text-mist-dim">{mode === 'login' ? 'Sign in with your phone number.' : STEP_HINTS[step]}</p>
+            <p className="mt-1 text-[13px] leading-relaxed text-mist-dim md:mt-2 md:text-[13.5px]">{mode === 'login' ? 'Sign in with your phone number.' : STEP_HINTS[step]}</p>
 
             {error && <div role="alert" className="mt-5 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-[13px] text-red-200">{error}</div>}
 
@@ -262,7 +262,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            <div className="mt-7 flex items-center justify-center gap-2 border-t border-white/10 pt-5 font-mono text-[9.5px] uppercase tracking-[0.22em] text-mist-dim">
+            <div className="mt-5 hidden items-center justify-center gap-2 border-t md:mt-7 md:flex border-white/10 pt-5 font-mono text-[9.5px] uppercase tracking-[0.22em] text-mist-dim">
               <ShieldCheck size={13} className="text-brand" /> Secure · Verified providers only
             </div>
           </div>

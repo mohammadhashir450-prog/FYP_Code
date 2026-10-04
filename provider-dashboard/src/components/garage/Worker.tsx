@@ -60,7 +60,8 @@ export default function Worker({ variant, say }: { variant: WorkerVariant; say?:
   const stage = useRef<THREE.Group>(null);
   const sparks = useRef<THREE.Points>(null);
   const bubble = useRef<HTMLDivElement>(null);
-  const { pointer } = useThree();
+  const { pointer, size } = useThree();
+  const squeeze = size.width < 900 ? 0.5 : 1; // keep both workers inside a narrow viewport
   const s = useRef({ yaw: SPOTS.login[2], jump: 0, jumpV: 0, wasSuccess: 0, walkPhase: 0, moving: 0 });
 
   // spark particles (emitted at the wrench tip while typing)
@@ -92,7 +93,8 @@ export default function Worker({ variant, say }: { variant: WorkerVariant; say?:
 
     // ── target spot (walks between stations)
     const key = garage.mode === 'login' ? 'login' : `s${Math.min(2, garage.step)}`;
-    const [tx, tz, face0] = SPOTS[key];
+    const [tx0, tz, face0] = SPOTS[key];
+    const tx = tx0 * squeeze;
     const face = face0 + turnAway * Math.PI * 0.85;
     const dx = tx - r.position.x, dz = tz - r.position.z;
     const dist = Math.hypot(dx, dz);
@@ -262,7 +264,7 @@ export default function Worker({ variant, say }: { variant: WorkerVariant; say?:
               </>
             )}
             {/* speech bubble */}
-            {say && <Html position={[0.05, 0.55, 0]} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
+            {say && squeeze === 1 && <Html position={[0.05, 0.55, 0]} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
               <div ref={bubble} style={{ position: 'relative', width: 190, padding: '10px 14px', whiteSpace: 'normal', borderRadius: 16, background: 'rgba(255,255,255,.96)', color: '#04162f', fontFamily: "'Inter', sans-serif", fontSize: 12.5, fontWeight: 600, lineHeight: 1.35, textAlign: 'center', boxShadow: '0 12px 34px rgba(0,0,0,.45)' }}>
                 {say}
                 <span style={{ position: 'absolute', left: '50%', bottom: -6, width: 12, height: 12, background: 'rgba(255,255,255,.96)', transform: 'translateX(-50%) rotate(45deg)' }} />

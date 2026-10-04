@@ -180,11 +180,11 @@ function CameraRig() {
     const narrow = size.width < 900;
     const shiftX = 0; // the form card sits in the middle; the crew flank it
     const dz = garage.mode === 'register' ? 9.8 - garage.step * 0.2 : 10.2;
-    cur.current.z = THREE.MathUtils.damp(cur.current.z, narrow ? dz + 4.5 : dz, 2.5, dt);
+    cur.current.z = THREE.MathUtils.damp(cur.current.z, narrow ? dz + 5 : dz, 2.5, dt);
     cur.current.x = THREE.MathUtils.damp(cur.current.x, shiftX + pointer.x * 0.5, 3, dt);
     cur.current.y = THREE.MathUtils.damp(cur.current.y, 1.75 + pointer.y * 0.2 + (narrow ? 0.5 : 0), 3, dt);
     camera.position.set(cur.current.x, cur.current.y, cur.current.z);
-    camera.lookAt(shiftX, narrow ? 0.5 : 1.15, 0);
+    camera.lookAt(shiftX, narrow ? -2.5 : 1.15, 0);
   });
   return null;
 }

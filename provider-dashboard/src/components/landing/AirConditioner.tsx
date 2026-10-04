@@ -148,7 +148,7 @@ export default function AirConditioner() {
     // entrance: falls in from above with a little overshoot, tumbling as it settles
     const d = story.drift * Math.PI * 2;
     const drop = (1 - a);
-    g.position.set(narrow ? 0 : 2.6, (narrow ? 3.9 : 1.35) + drop * 9 + Math.sin(t * 0.9) * 0.05, 0);
+    g.position.set(narrow ? 0 : 2.6, (narrow ? 2.7 : 1.35) + drop * 9 + Math.sin(t * 0.9) * 0.05, 0);
     g.rotation.y = -0.38 + a * 0.2 + Math.sin(d * 2) * 0.1 + pointer.x * 0.18 + drop * 1.2;
     g.rotation.x = pointer.y * -0.05 + drop * 0.5;
     g.scale.setScalar((narrow ? 0.72 : 1) * (0.6 + 0.4 * a));

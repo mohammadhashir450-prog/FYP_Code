@@ -24,7 +24,7 @@ export default function TrackingPage() {
         </header>
 
         {booking ? (
-          <div className="split-main" style={{ gridTemplateColumns: 'minmax(0,1fr) 380px', alignItems: 'start' }}>
+          <div className="split-main" style={{ alignItems: 'start' }}>
             <section className="panel" style={{ overflow: 'hidden', position: 'relative', height: 'min(72vh, 680px)', minHeight: 420 }}>
               <TrackingMap booking={booking} follow={follow} className="" />
               <div style={{ position: 'absolute', top: 14, left: 14, zIndex: 500, display: 'flex', gap: 8 }}>
